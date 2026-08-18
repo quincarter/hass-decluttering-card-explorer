@@ -4,6 +4,73 @@
 >
 > **This plan was rewritten after a direction change.** The original plan built a *standalone read-only explorer card*. The new goal (decided with the user) is to **feed decluttering templates into Home Assistant's native "Add Card" selector** so that, while building a dashboard, every template shows up as a selectable card with a live preview and inserts pre-filled.
 
+## Status (as of 2026-08-18) — resume here in a fresh context window
+
+**Read [`CLAUDE.md`](./CLAUDE.md) first** — it documents the repo layout, conventions,
+and the subagent team (`lit-expert`, `home-assistant-expert`, `testing-expert`,
+`code-reviewer`, defined in `.claude/agents/`). Keep using that team: tests first
+(`testing-expert`), then the matching domain expert implements against the test file,
+then `code-reviewer` reviews the diff before considering a task done.
+
+**Done — Phases 0, 1, 2, 3, and Task 9** (Tasks 1–10 below; all still uncommitted —
+nothing has been pushed or committed per the user's "only commit when asked" rule):
+- `package.json`/`tsconfig.json`/`vite.config.ts`/`.gitignore` scaffolded, `js-yaml`
+  dropped (unused, was cosmetic scope creep flagged by review).
+- `src/types.ts`, `src/decluttering.ts`, `src/register.ts`,
+  `src/decluttering-selector.ts` all implemented.
+- `tests/decluttering.test.ts`, `tests/register.test.ts`,
+  `tests/decluttering-selector.test.ts` — **72 tests, all green**. `npx tsc --noEmit`
+  clean. `npm run build` produces `dist/decluttering-selector.js` (~26 kB, ~8 kB
+  gzipped).
+- `dev/index.html` + `dev/mock-hass.ts` updated to exercise `decluttering-selector`
+  (the old `decluttering-explorer-card` references are gone).
+- `info.md` (Task 9) written from `README.md` as the source, per its instructions.
+- A `code-reviewer` pass found and the team fixed, TDD-style: stale
+  `getStubConfig()`/`render()` after editing a template, silent tag-collision
+  overwrite, malformed non-object `default` values producing garbage `variables`,
+  missing `disconnectedCallback` unsubscribe for `lovelace_updated`, and a follow-up
+  bug the collision fix itself introduced (stale tag ownership never released across
+  `registerAll` passes, permanently blocking a colliding template's rename/successor
+  from ever registering — fixed by having `registerAll` reconcile ownership against
+  the current batch on every call).
+- **Architecture deviation (previously flagged, now resolved):** `getDeclutteringTemplates(hass)`
+  is now implemented in `src/decluttering.ts` as a pure function (reads
+  `hass?.lovelace?.config?.decluttering_templates`, throws an exported
+  `LovelaceUnavailableError` — safe against `hass` itself being `undefined`/`null` —
+  when unavailable) with its own unit tests in `tests/decluttering.test.ts`.
+  `src/decluttering-selector.ts`'s `_resolveTemplates()` now calls it and catches
+  `LovelaceUnavailableError` via `instanceof` to fall back to the `lovelace/config` WS
+  call; any other error rethrows into `_register()`'s catch, which now
+  `console.error`s it instead of silently swallowing. Reviewed by `code-reviewer`
+  (findings applied: null-safety on the pure function's `hass` param, error logging).
+
+**Known accepted scope boundary (not a bug, but worth knowing):** when a template is
+renamed or deleted, its old `window.customCards` entry is never actively pruned —
+`registerAll`'s reconciliation only releases *tag ownership* so a colliding survivor
+can re-register; it doesn't walk `window.customCards` removing entries for names no
+longer present. In practice this only matters if a template is deleted outright with
+no successor claiming its tag (rare — most edits are either a same-name edit or a
+same-pass collision, both handled). Revisit only if it turns out to matter in real use.
+
+**Minor known gap:** `HassWithLovelace` is still hand-duplicated (once, unexported, in
+`src/decluttering.ts`; once, intersected with `HomeAssistant`, in
+`src/decluttering-selector.ts`) — both describe the same `lovelace.config.decluttering_templates`
+shape. Not a boundary violation (types erase at compile time), just two copies that
+could drift if edited in only one place. Low priority; fold into one exported type if
+it ever needs a third shape change.
+
+**Not done yet — pick up here:**
+- **Task 11 (manual verification)**: `npm install`/`test`/`build` are all verified
+  green by the agent team, but the actual manual HA verification step (`dist/` copied
+  into a real HA `www/`, added as a `module` resource, dashboard with
+  `decluttering_templates` set up, "Add Card" picker opened, template clicked and
+  inserted) has **not** been done — no real HA instance was available in this session.
+  This still needs doing before calling the feature actually proven.
+- **Phase 4 / Task 12**: final cleanup, and committing + pushing to
+  `quincarter/hass-decluttering-card-explorer` — not started. Nothing in this repo has
+  been committed yet; `git status` will show everything from this session as
+  untracked/modified.
+
 **Goal:** A card element that, once loaded on a dashboard, reads the dashboard's `decluttering_templates` and **registers each template into HA's native Add Card picker** (`window.customCards`) via a dynamically-defined `hui-card-decluttering-card-*` custom element whose `getStubConfig()` returns a fully pre-filled `custom:decluttering-card`. Clicking a template in the native picker shows a live preview and inserts the pre-filled card. Optionally it can also render a compact in-dashboard list/explorer as a bonus.
 
 **Architecture (grounded in `home-assistant/frontend` `dev`):**
@@ -55,10 +122,10 @@ decluttering-selector/
 
 ## Phase 0 — Scaffold
 
-### Task 1: `package.json`
+### Task 1: `package.json` — ✅ DONE
 Pin versions above. Scripts: `dev` (vite), `build` (`tsc --noEmit && vite build`), `test` (`vitest run`), `test:watch` (`vitest`).
 
-### Task 2: `tsconfig.json`, `vite.config.ts`, `.gitignore`
+### Task 2: `tsconfig.json`, `vite.config.ts`, `.gitignore` — ✅ DONE
 - `tsconfig.json`: `experimentalDecorators: true`, `useDefineForClassFields: false`, `strict: true`, `moduleResolution: Bundler`, `types: ["vite/client"]`, include `src`, `tests`, `dev`.
 - `vite.config.ts`: lib build, single ES module `dist/decluttering-selector.js`, `target: es2020`, `minify: true`.
 - `.gitignore`: `node_modules/`, `dist/`.
@@ -67,10 +134,10 @@ Pin versions above. Scripts: `dev` (vite), `build` (`tsc --noEmit && vite build`
 
 ## Phase 1 — Pure logic (TDD)
 
-### Task 3: `src/types.ts`
+### Task 3: `src/types.ts` — ✅ DONE
 Local types: `DeclutteringTemplate` (`card? | element?`, `default?`, `variables?`, `entities?` — the known `decluttering-card` fields), `DeclutteringTemplates` map, `TemplateMeta` (`name`, `safeName`, `variableCount`, `requiredVariables`, `stubConfig`).
 
-### Task 4: `src/decluttering.ts`
+### Task 4: `src/decluttering.ts` — ✅ DONE
 **Pure, no DOM, no HA** — fully unit-testable:
 - `safeTagName(name: string): string` — lower-case, strip/replace illegal chars (`[^a-z0-9-]` → `-`), collapse repeats, trim `-`, prefix guard (HTML tags can't start with a digit → prefix `t-` if needed).
 - `extractTemplates(config): DeclutteringTemplates` — returns `config.decluttering_templates ?? {}`.
@@ -78,23 +145,23 @@ Local types: `DeclutteringTemplate` (`card? | element?`, `default?`, `variables?
 - `analyzeTemplates(templates): TemplateMeta[]` — for each: variable count (scan `card`/`element` YAML for `[[...]]` placeholders), required (no-default) variables, safeName.
 - `getDeclutteringTemplates(hass)` — reads `hass.lovelace?.config?.decluttering_templates`, else throws a typed "unavailable" so the UI can fall back to the WS call. (WS fallback is wired in the element, not the pure fn.)
 
-### Task 5: `tests/decluttering.test.ts` (write FIRST — TDD)
+### Task 5: `tests/decluttering.test.ts` (write FIRST — TDD) — ✅ DONE
 Cover: safeTagName edge cases (`My_Template!` → `my-template-`, leading digit `1foo` → `t-1foo`), stub config shape, variable/required extraction, empty templates → `[]`.
 
-### Task 6: `src/register.ts`
+### Task 6: `src/register.ts` — ✅ DONE
 **Pure-ish (DOM-registry guarded, testable via happy-dom/jsdom):**
 - `makePreviewElement(tag, meta)` — returns a `LitElement` subclass with `static async getStubConfig()` returning `meta.stubConfig` and a `render()` that shows the template name + `${meta.variableCount} var(s)` (never throws).
 - `registerTemplate(meta)` — if `!customElements.get(tag)` then `customElements.define(tag, cls)`; push `{ type: "decluttering-card-<safeName>", name, description, preview: true }` into `window.customCards` (update in place if an entry with that type already exists).
 - `registerAll(metas)` — loop; return the list of registered types. Idempotent.
 
-### Task 7: `tests/register.test.ts`
+### Task 7: `tests/register.test.ts` — ✅ DONE
 With happy-dom: after `registerTemplate(meta)`, assert `customElements.get(tag)` exists, `window.customCards` contains the entry with the right `type`/`name`/`preview`, and calling `getStubConfig()` yields the pre-filled stub. Re-register is idempotent (no throw, entry updated).
 
 ---
 
 ## Phase 2 — Loader element + wiring
 
-### Task 8: `src/decluttering-selector.ts`
+### Task 8: `src/decluttering-selector.ts` — ✅ DONE
 - `@customElement("decluttering-selector")` Lit element, standard `setConfig` (accepts optional `title`), `static getStubConfig()` returns `{ type: "custom:decluttering-selector" }`.
 - `updated()` / `firstUpdated()`: when `hass` arrives, call `_register()`.
 - `_register()`: `try { const t = getDeclutteringTemplates(this.hass); } catch { fall back to WS lovelace/config }`. Build `TemplateMeta[]` via `analyzeTemplates`, then `registerAll(metas)`. Render a small bonus explorer (list of templates + Copy YAML) **and** a status line ("N templates registered into Add Card"). Guard all renders.
@@ -102,17 +169,17 @@ With happy-dom: after `registerTemplate(meta)`, assert `customElements.get(tag)`
 - `render()`: the bonus explorer list (name, variable count, usage count, expandable raw YAML, Copy YAML button) **plus** a notice that templates are also available in the native Add Card picker. This preserves the original "explorer" value-add while the headline feature is the native integration.
 - `getCardEditor()` — optional minimal editor (can be omitted for v1; return `undefined` is acceptable).
 
-### Task 9: `info.md` (HACS listing) + `README.md` (install/dev)
+### Task 9: `info.md` (HACS listing) + `README.md` (install/dev) — ✅ DONE
 State clearly: "Add this card once to any dashboard; it registers your decluttering templates into Home Assistant's native Add Card picker."
 
 ---
 
 ## Phase 3 — Dev environment + verification
 
-### Task 10: `dev/index.html` + `dev/mock-hass.ts`
+### Task 10: `dev/index.html` + `dev/mock-hass.ts` — ✅ DONE
 Mock `HomeAssistant` with a `lovelace.config` containing `decluttering_templates` + usages. Load the card; verify it registers entries into a `window.customCards` stub and the bonus list renders.
 
-### Task 11: Build + verify
+### Task 11: Build + verify — ⚠️ PARTIALLY DONE (build/test verified; manual HA verification still pending)
 - `npm install` → 0
 - `npm run test` → Vitest green
 - `npm run build` → `dist/decluttering-selector.js` produced, no TS errors
@@ -122,7 +189,7 @@ Mock `HomeAssistant` with a `lovelace.config` containing `decluttering_templates
 
 ## Phase 4 — Polish + commit
 
-### Task 12: Final cleanup + commit + push to `quincarter/hass-decluttering-card-explorer`
+### Task 12: Final cleanup + commit + push to `quincarter/hass-decluttering-card-explorer` — ⬜ TODO
 Keep the file names from the existing repo (`decluttering-explorer-card.ts` etc. are fine to reuse/repurpose; the bundle output filename should match `hacs.json` `filename`).
 
 ## Risks / Tradeoffs / Open Questions

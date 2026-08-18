@@ -79,7 +79,7 @@ const sampleConfig = {
 export const mockHass = {
   connected: true,
   states: {},
-  user: { name: 'dev', is_admin: true, id: 'dev', name: 'dev' },
+  user: { name: 'dev', is_admin: true, id: 'dev' },
   config: { version: '2024.1.0', location_name: 'dev' },
   themes: { darkMode: false },
   selectedTheme: null,
@@ -89,7 +89,9 @@ export const mockHass = {
     mode: 'storage' as const,
     current_view: 0,
   },
-  callWS: async (_msg: unknown): Promise<unknown> => ({}),
+  callWS: async (_msg: unknown): Promise<unknown> => ({
+    decluttering_templates: sampleConfig.decluttering_templates,
+  }),
   connection: {
     subscribeEvents: async (_cb: (ev: unknown) => void, _event: string) =>
       (): void => {},
@@ -103,4 +105,4 @@ const card = document.getElementById('card') as unknown as {
   setConfig: (c: Record<string, unknown>) => void;
 };
 card.hass = mockHass;
-card.setConfig({ type: 'custom:decluttering-explorer-card', title: 'Decluttering Templates' });
+card.setConfig({ type: 'custom:decluttering-selector', title: 'Decluttering Templates' });

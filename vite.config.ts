@@ -4,10 +4,13 @@ export default defineConfig({
   build: {
     target: 'es2020',
     lib: {
-      entry: 'src/decluttering-explorer-card.ts',
+      entry: 'src/decluttering-selector.ts',
       formats: ['es'],
-      fileName: () => 'decluttering-explorer-card.js',
+      fileName: () => 'decluttering-selector.js',
     },
     minify: true,
+  },
+  test: {
+    environment: 'happy-dom',
   },
 });
