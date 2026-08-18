@@ -1,5 +1,5 @@
 {
-  "name": "Decluttering Explorer Card",
+  "name": "Decluttering Selector",
   "render_readme": true,
-  "filename": "dist/decluttering-explorer-card.js"
+  "filename": "dist/decluttering-selector.js"
 }

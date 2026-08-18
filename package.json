@@ -1,7 +1,7 @@
 {
-  "name": "decluttering-explorer-card",
+  "name": "decluttering-selector",
   "version": "0.1.0",
-  "description": "Lovelace card that explores your decluttering-card templates",
+  "description": "Registers your decluttering-card templates into Home Assistant's native Add Card picker",
   "type": "module",
   "scripts": {
     "dev": "vite",
