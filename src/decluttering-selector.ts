@@ -1,4 +1,4 @@
-import { LitElement, html, type PropertyValues } from 'lit';
+import { LitElement, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from 'custom-card-helpers';
 import {
@@ -12,6 +12,13 @@ import type { DeclutteringTemplates, TemplateMeta } from './types';
 
 interface DeclutteringSelectorConfig {
   title?: string;
+  /**
+   * The on-dashboard status list (title/count/template names) is off by default —
+   * this card's job is registering templates into the Add Card picker, not adding
+   * visible dashboard clutter. Set `show_info: true` to see it (useful while
+   * confirming templates were found, or debugging why one isn't showing up).
+   */
+  show_info?: boolean;
 }
 
 /**
@@ -153,6 +160,8 @@ export class DeclutteringSelector extends LitElement {
 
   protected render() {
     try {
+      if (!this._config.show_info) return nothing;
+
       const count = this._metas.length;
       const title = this._config.title;
       return html`

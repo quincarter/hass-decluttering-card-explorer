@@ -115,6 +115,11 @@ describe('setConfig', () => {
     const el = createElement();
     expect(() => el.setConfig!({ title: 'My Templates' })).not.toThrow();
   });
+
+  it('accepts an optional show_info field without throwing', () => {
+    const el = createElement();
+    expect(() => el.setConfig!({ show_info: true })).not.toThrow();
+  });
 });
 
 describe('registration from hass.lovelace.config', () => {
@@ -274,8 +279,9 @@ describe('registration when hass.panels has not hydrated yet', () => {
 });
 
 describe('render', () => {
-  it('does not throw and produces shadow DOM content when hass is entirely unset', async () => {
+  it('does not throw and produces shadow DOM content when hass is entirely unset (show_info: true)', async () => {
     const el = createElement();
+    el.setConfig!({ show_info: true });
     expect(() => document.body.appendChild(el)).not.toThrow();
     await flush(el);
 
@@ -285,11 +291,12 @@ describe('render', () => {
     document.body.removeChild(el);
   });
 
-  it('does not throw when a template has neither card nor element', async () => {
+  it('does not throw when a template has neither card nor element (show_info: true)', async () => {
     const templates: DeclutteringTemplates = {
       'malformed-no-card-or-element': {} as DeclutteringTemplate,
     };
     const el = createElement();
+    el.setConfig!({ show_info: true });
     document.body.appendChild(el);
 
     expect(() => {
@@ -303,7 +310,7 @@ describe('render', () => {
     document.body.removeChild(el);
   });
 
-  it('does not throw when default is an unexpected type like a string', async () => {
+  it('does not throw when default is an unexpected type like a string (show_info: true)', async () => {
     const templates: DeclutteringTemplates = {
       'malformed-string-default': {
         card: { type: 'x' },
@@ -311,6 +318,7 @@ describe('render', () => {
       },
     };
     const el = createElement();
+    el.setConfig!({ show_info: true });
     document.body.appendChild(el);
 
     expect(() => {
@@ -320,6 +328,53 @@ describe('render', () => {
 
     expect(el.shadowRoot).toBeTruthy();
     expect(el.shadowRoot!.childNodes.length).toBeGreaterThan(0);
+
+    document.body.removeChild(el);
+  });
+
+  it('renders no visible status content by default (show_info omitted)', async () => {
+    const templates = makeTemplates('hidden-by-default', 2);
+    const el = createElement();
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(el.shadowRoot).toBeTruthy();
+    expect(el.shadowRoot!.textContent?.trim()).toBe('');
+
+    document.body.removeChild(el);
+  });
+
+  it('renders no visible status content when show_info is explicitly false', async () => {
+    const templates = makeTemplates('show-info-false', 2);
+    const el = createElement();
+    el.setConfig!({ show_info: false });
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(el.shadowRoot!.textContent?.trim()).toBe('');
+
+    document.body.removeChild(el);
+  });
+
+  it('renders the status list, including template names, when show_info is true', async () => {
+    const templates = makeTemplates('show-info-true', 2);
+    const el = createElement();
+    el.setConfig!({ show_info: true, title: 'My Templates' });
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    const text = el.shadowRoot!.textContent ?? '';
+    expect(text).toContain('My Templates');
+    expect(text).toContain('2 templates registered into Add Card');
+    for (const name of Object.keys(templates)) {
+      expect(text).toContain(name);
+    }
 
     document.body.removeChild(el);
   });

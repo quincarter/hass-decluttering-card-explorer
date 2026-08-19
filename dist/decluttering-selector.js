@@ -726,6 +726,7 @@ var $ = class extends K {
 	}
 	render() {
 		try {
+			if (!this._config.show_info) return L;
 			let e = this._metas.length, t = this._config.title;
 			return F`
         <div>

@@ -51,9 +51,10 @@ extension points every other custom card relies on (`window.customCards` +
 - Registers each template into the native Add Card picker (name, description, live preview)
 - Clicking a template inserts a **pre-filled** `custom:decluttering-card`
 - Re-registers on `lovelace_updated` (dashboard saved)
-- Bonus: the card itself renders a small on-dashboard status list — an optional
-  title, a count of templates registered, and the name of each one — so you can
-  confirm at a glance that it found your templates
+- Optional on-dashboard status list — a title, a count of templates registered, and
+  the name of each one, for confirming at a glance that it found your templates.
+  Hidden by default (see `show_info` below); this card's job is registering
+  templates into the picker, not adding visible dashboard clutter
 
 ## Installation
 
@@ -147,17 +148,26 @@ The card only reads templates from the dashboard it's placed on (see
   type: custom:decluttering-selector
   ```
 
-- Optional config — `title` is the only option (shown above the status list):
+- Optional config:
+
+  | Option | Default | Description |
+  | --- | --- | --- |
+  | `title` | _(none)_ | Heading shown above the status list, if `show_info` is on |
+  | `show_info` | `false` | Set `true` to show the on-dashboard status list |
 
   ```yaml
   type: custom:decluttering-selector
+  show_info: true
   title: My Templates
   ```
 
-Once added, the card itself renders a small status block: your optional `title`, a
-line like "3 templates registered into Add Card", and a plain list of the template
-names it found. That's just a confirmation readout — the actual point of the card is
-what it does to the **Add Card** picker (next step).
+By default the card renders nothing visible on the dashboard — it's only there to
+register templates into the picker (next step), and most people don't want a status
+block cluttering up a real dashboard. Set `show_info: true` to see it: your optional
+`title`, a line like "3 templates registered into Add Card", and a plain list of the
+template names it found. Handy while confirming templates were picked up, or
+debugging why one isn't showing in Add Card — see [Troubleshooting](#troubleshooting)
+below.
 
 ### 3. Open "Add Card" and pick a template
 
@@ -190,6 +200,9 @@ different dashboard won't show up here — add a copy of this card to each dashb
 whose templates you want in that dashboard's picker.
 
 ### Troubleshooting
+
+Add `show_info: true` to the card's config first — the status line and template list
+these steps refer to are hidden by default.
 
 - **"0 templates registered" on the status line** — confirm `decluttering_templates`
   is actually defined at the top level of *this* dashboard's config (not a different
