@@ -1,5 +1,11 @@
 # decluttering-selector
 
+## 0.3.1
+
+### Patch Changes
+
+- b165d7f: Clean up stale references in README.md and CONTRIBUTING.md, including an outdated project description that no longer matched what the card does.
+
 ## 0.3.0
 
 ### Minor Changes
