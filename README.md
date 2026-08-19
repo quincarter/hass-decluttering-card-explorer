@@ -83,7 +83,7 @@ extension points every other custom card relies on (`window.customCards` +
 
 1. Download `dist/decluttering-selector.js` from the
    [latest release](https://github.com/quincarter/hass-decluttering-card-explorer/releases)
-   (or build it yourself — see [Development](#development) below).
+   (or build it yourself — see [CONTRIBUTING.md](.github/CONTRIBUTING.md)).
 2. Copy it into your Home Assistant `config/www/` folder, e.g.
    `config/www/decluttering-selector.js`.
 3. Add it as a Lovelace resource: **Settings → Dashboards → ⋮ → Resources → Add
@@ -206,24 +206,7 @@ whose templates you want in that dashboard's picker.
   template's `default:` block get pre-filled; anything else needs to be filled in by
   hand after inserting.
 
-## Development
+## Contributing
 
-```bash
-npm install
-npm run dev      # open dev/index.html with a mock HA object (fast iteration)
-npm run test     # Vitest unit tests for the pure parse/register logic
-npm run build    # outputs dist/decluttering-selector.js
-```
-
-To test against a real HA instance:
-
-1. `npm run build`
-2. Copy `dist/decluttering-selector.js` to HA `/config/www/`
-3. Add it as a `module` resource
-4. Add the card to a dashboard: `type: custom:decluttering-selector`
-5. Open "Add Card" → your templates appear with previews
-
-## Tech
-
-TypeScript + Lit 3, bundled with Vite into a single ES module. Pure, unit-tested
-logic handles template parsing and the custom-element/registry wiring.
+Building, testing against a real HA instance, and cutting a release are covered in
+[.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).

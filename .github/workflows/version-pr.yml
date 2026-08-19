@@ -1,0 +1,43 @@
+name: Version Packages
+
+# Opens/updates a "Version Packages" PR whenever a pending .changeset/*.md file
+# lands on main. Merging that PR is what triggers release.yml. This workflow never
+# publishes anything — changesets/action's `publish` input is intentionally omitted,
+# since this repo has no npm registry target (see CLAUDE.md "Versioning & releases").
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run test
+
+      - name: Open or update the Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: npm run version
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
