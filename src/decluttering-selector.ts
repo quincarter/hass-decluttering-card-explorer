@@ -15,15 +15,39 @@ interface DeclutteringSelectorConfig {
 }
 
 /**
- * `custom-card-helpers`'s `HomeAssistant` type doesn't declare `lovelace` (it's a
- * frontend-only runtime field, not part of the public card-facing API surface), but
- * the real object always has it when rendered inside a dashboard.
+ * `hass.lovelace` is NOT part of the real `HomeAssistant` object for card elements —
+ * it's tracked as component-local state in HA frontend's `ha-panel-lovelace`, and
+ * only ever passed down as a *separate* `.lovelace` property to view/editor
+ * elements, never merged onto `hass`. This type (and the `getDeclutteringTemplates`
+ * primary-path lookup that uses it) exists only as a best-effort check for
+ * environments where something else happens to have set it; the `lovelace/config`
+ * WS call below — with an explicit `url_path` — is the actual reliable path.
  */
 type HassWithLovelace = HomeAssistant & {
   lovelace?: {
     config?: { decluttering_templates?: DeclutteringTemplates };
   };
 };
+
+/**
+ * The `lovelace/config` WS command does a flat lookup keyed by `url_path`; omitting
+ * it doesn't mean "current dashboard" — it always resolves to the instance's
+ * built-in default dashboard. So the card has to determine which dashboard it's
+ * actually being viewed on itself. `window.location.pathname`'s first segment is
+ * usually the dashboard's `url_path`, but under a reverse-proxy path prefix that
+ * segment could be something else — cross-checking against `hass.panels` (every
+ * Lovelace dashboard panel, default or custom, has `component_name === 'lovelace'`)
+ * finds the real one regardless of leading path segments.
+ */
+export function getCurrentDashboardUrlPath(hass: HassWithLovelace | undefined): string | undefined {
+  const segments = window.location.pathname.split('/').filter(Boolean);
+  for (const segment of segments) {
+    if (hass?.panels?.[segment]?.component_name === 'lovelace') {
+      return segment;
+    }
+  }
+  return segments[0];
+}
 
 @customElement('decluttering-selector')
 export class DeclutteringSelector extends LitElement {
@@ -85,14 +109,34 @@ export class DeclutteringSelector extends LitElement {
       if (!(err instanceof LovelaceUnavailableError)) throw err;
     }
 
-    if (typeof this.hass?.callWS === 'function') {
+    if (typeof this.hass?.callWS !== 'function') return {};
+
+    const urlPath = getCurrentDashboardUrlPath(this.hass);
+
+    try {
       const result = await this.hass.callWS<{
         decluttering_templates?: DeclutteringTemplates;
-      }>({ type: 'lovelace/config' });
+      }>({ type: 'lovelace/config', url_path: urlPath });
       return extractTemplates(result ?? {});
+    } catch (err) {
+      // Pre-migration instances may only have the unnamed default dashboard
+      // (url_path omitted entirely), not one registered under "lovelace" yet.
+      // Only retry that specific, narrow case — retrying for any other url_path
+      // would silently re-fetch the wrong (default) dashboard's config.
+      const code = (err as { code?: string } | undefined)?.code;
+      if (urlPath === 'lovelace' && code === 'config_not_found') {
+        console.warn(
+          'decluttering-selector: no dashboard registered at url_path "lovelace"; falling back ' +
+            "to the instance's unnamed default dashboard config (pre-migration HA instance). " +
+            "If this isn't the dashboard you're viewing, its templates won't be registered."
+        );
+        const result = await this.hass.callWS<{
+          decluttering_templates?: DeclutteringTemplates;
+        }>({ type: 'lovelace/config' });
+        return extractTemplates(result ?? {});
+      }
+      throw err;
     }
-
-    return {};
   }
 
   private async _register(): Promise<void> {

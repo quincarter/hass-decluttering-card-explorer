@@ -80,6 +80,26 @@ gh release create vX.Y.Z dist/decluttering-selector.js --title vX.Y.Z --generate
 
 </details>
 
+## Claude Code Skills
+
+This repo has one project-scoped Claude Code skill, in `.claude/skills/`:
+
+- **`release-note`** — records a release-note-worthy change as a Changeset from a
+  plain-language description, without needing the interactive `changeset add`
+  prompt (which is a TUI and can't be driven by a script or an agent). Invoke it
+  with a description, optionally prefixed with an explicit bump type (`patch:`,
+  `minor:`, or `major:` — defaults to `patch` if omitted), e.g.:
+
+  ```
+  /release-note minor: registers templates from cross-dashboard config too
+  ```
+
+  It writes that description to a `.changeset/*.md` file via
+  `node scripts/add-changeset.mjs` (see [Releasing](#releasing) above) — the exact
+  text becomes both the `CHANGELOG.md` entry and, once merged and released, the
+  published GitHub release notes for that version. It only records the changeset;
+  cutting an actual release is a separate, explicit step it never takes on its own.
+
 ## Tech
 
 TypeScript + Lit 3, bundled with Vite into a single ES module. Pure, unit-tested

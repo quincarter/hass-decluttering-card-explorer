@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../src/decluttering-selector';
+import { getCurrentDashboardUrlPath } from '../src/decluttering-selector';
 import { safeTagName } from '../src/decluttering';
 import type { DeclutteringTemplate, DeclutteringTemplates } from '../src/types';
 
@@ -80,6 +81,10 @@ beforeEach(() => {
   window.customCards = [];
 });
 
+afterEach(() => {
+  window.history.pushState({}, '', '/');
+});
+
 describe('decluttering-selector registration', () => {
   it('registers a custom element under the decluttering-selector tag', () => {
     expect(customElements.get('decluttering-selector')).toBeDefined();
@@ -132,8 +137,123 @@ describe('registration from hass.lovelace.config', () => {
 });
 
 describe('registration fallback via hass.callWS', () => {
-  it('calls hass.callWS with lovelace/config when hass.lovelace is absent and registers the resolved templates', async () => {
+  it('calls hass.callWS with the current dashboard url_path when hass.lovelace is absent and registers the resolved templates', async () => {
+    window.history.pushState({}, '', '/my-dashboard/0');
     const templates = makeTemplates('ws-fallback', 2);
+    const callWS = vi.fn().mockResolvedValue({ decluttering_templates: templates });
+    const hass = {
+      callWS,
+      panels: { 'my-dashboard': { component_name: 'lovelace' } },
+      connection: { subscribeEvents: vi.fn().mockResolvedValue(() => {}) },
+    };
+
+    const el = createElement();
+    document.body.appendChild(el);
+
+    el.hass = hass;
+    await flush(el);
+
+    expect(callWS).toHaveBeenCalledWith({ type: 'lovelace/config', url_path: 'my-dashboard' });
+
+    const expectedTypes = Object.keys(templates).map(typeForName);
+    for (const type of expectedTypes) {
+      expect(window.customCards!.some((c) => c.type === type)).toBe(true);
+    }
+    expect(window.customCards).toHaveLength(2);
+
+    document.body.removeChild(el);
+  });
+
+  it('retries without url_path when the resolved "lovelace" dashboard is not found (pre-migration instances)', async () => {
+    window.history.pushState({}, '', '/lovelace/0');
+    const templates = makeTemplates('legacy-default', 1);
+    const callWS = vi.fn()
+      .mockRejectedValueOnce({ code: 'config_not_found' })
+      .mockResolvedValueOnce({ decluttering_templates: templates });
+    const hass = {
+      callWS,
+      panels: { lovelace: { component_name: 'lovelace' } },
+      connection: { subscribeEvents: vi.fn().mockResolvedValue(() => {}) },
+    };
+
+    const el = createElement();
+    document.body.appendChild(el);
+
+    el.hass = hass;
+    await flush(el);
+
+    expect(callWS).toHaveBeenNthCalledWith(1, { type: 'lovelace/config', url_path: 'lovelace' });
+    expect(callWS).toHaveBeenNthCalledWith(2, { type: 'lovelace/config' });
+    expect(window.customCards).toHaveLength(1);
+
+    document.body.removeChild(el);
+  });
+
+  it('does not retry (and logs, leaving the card empty) when a non-default dashboard is not found', async () => {
+    window.history.pushState({}, '', '/some-other-dashboard/0');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const callWS = vi.fn().mockRejectedValue({ code: 'config_not_found' });
+    const hass = {
+      callWS,
+      panels: { 'some-other-dashboard': { component_name: 'lovelace' } },
+      connection: { subscribeEvents: vi.fn().mockResolvedValue(() => {}) },
+    };
+
+    const el = createElement();
+    document.body.appendChild(el);
+
+    el.hass = hass;
+    await flush(el);
+
+    expect(callWS).toHaveBeenCalledTimes(1);
+    expect(window.customCards).toHaveLength(0);
+    expect(consoleError).toHaveBeenCalled();
+
+    consoleError.mockRestore();
+    document.body.removeChild(el);
+  });
+});
+
+describe('getCurrentDashboardUrlPath', () => {
+  it('resolves the default dashboard via hass.panels even though the URL segment is also "lovelace"', () => {
+    window.history.pushState({}, '', '/lovelace/0');
+    const hass = { panels: { lovelace: { component_name: 'lovelace' } } };
+    expect(getCurrentDashboardUrlPath(hass as never)).toBe('lovelace');
+  });
+
+  it('resolves a named dashboard slug from the URL', () => {
+    window.history.pushState({}, '', '/my-custom-dashboard/some-view');
+    const hass = { panels: { 'my-custom-dashboard': { component_name: 'lovelace' } } };
+    expect(getCurrentDashboardUrlPath(hass as never)).toBe('my-custom-dashboard');
+  });
+
+  it('skips a reverse-proxy path prefix that is not a lovelace panel', () => {
+    window.history.pushState({}, '', '/proxy-prefix/my-dashboard/0');
+    const hass = { panels: { 'my-dashboard': { component_name: 'lovelace' } } };
+    expect(getCurrentDashboardUrlPath(hass as never)).toBe('my-dashboard');
+  });
+
+  it('falls back to the first path segment when hass.panels has no match', () => {
+    window.history.pushState({}, '', '/unknown-dashboard/0');
+    expect(getCurrentDashboardUrlPath(undefined)).toBe('unknown-dashboard');
+  });
+
+  it('returns undefined at the root path with no segments', () => {
+    window.history.pushState({}, '', '/');
+    expect(getCurrentDashboardUrlPath(undefined)).toBeUndefined();
+  });
+
+  it('handles a trailing slash the same as no trailing slash', () => {
+    window.history.pushState({}, '', '/my-dashboard/0/');
+    const hass = { panels: { 'my-dashboard': { component_name: 'lovelace' } } };
+    expect(getCurrentDashboardUrlPath(hass as never)).toBe('my-dashboard');
+  });
+});
+
+describe('registration when hass.panels has not hydrated yet', () => {
+  it('still resolves and registers templates via the first path segment when hass.panels is absent', async () => {
+    window.history.pushState({}, '', '/my-dashboard/0');
+    const templates = makeTemplates('no-panels-yet', 1);
     const callWS = vi.fn().mockResolvedValue({ decluttering_templates: templates });
     const hass = {
       callWS,
@@ -146,13 +266,8 @@ describe('registration fallback via hass.callWS', () => {
     el.hass = hass;
     await flush(el);
 
-    expect(callWS).toHaveBeenCalledWith({ type: 'lovelace/config' });
-
-    const expectedTypes = Object.keys(templates).map(typeForName);
-    for (const type of expectedTypes) {
-      expect(window.customCards!.some((c) => c.type === type)).toBe(true);
-    }
-    expect(window.customCards).toHaveLength(2);
+    expect(callWS).toHaveBeenCalledWith({ type: 'lovelace/config', url_path: 'my-dashboard' });
+    expect(window.customCards).toHaveLength(1);
 
     document.body.removeChild(el);
   });
