@@ -44,7 +44,12 @@ export function makePreviewElement(tag: string, meta: TemplateMeta): typeof LitE
 
 export function registerTemplate(meta: TemplateMeta): void {
   const type = `decluttering-card-${meta.safeName}`;
-  const tag = `hui-card-${type}`;
+  // HA's custom-card resolution (getLovelaceElementClass) does
+  // `customElements.get(stripCustomPrefix(config.type))` directly — no `hui-card-`
+  // or `hui-` prefix. That prefix convention only applies to HA's own built-in card
+  // types (resolved via a completely different `hui-${type}-card` code path), never
+  // to `window.customCards`-registered types. The tag must match `type` exactly.
+  const tag = type;
 
   const owner = currentMetaByTag.get(tag);
   if (owner && owner.name !== meta.name) {

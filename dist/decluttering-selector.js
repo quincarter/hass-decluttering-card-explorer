@@ -633,7 +633,7 @@ function Ae(e, t) {
 	};
 }
 function je(e) {
-	let t = `decluttering-card-${e.safeName}`, n = `hui-card-${t}`, r = Z.get(n);
+	let t = `decluttering-card-${e.safeName}`, n = t, r = Z.get(n);
 	if (r && r.name !== e.name) return;
 	Z.set(n, e), customElements.get(n) || customElements.define(n, Ae(n, e)), Array.isArray(window.customCards) || (window.customCards = []);
 	let i = {

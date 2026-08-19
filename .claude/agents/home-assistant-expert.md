@@ -12,10 +12,16 @@ section is grounded in the real `home-assistant/frontend` source and is the
 authoritative spec for how the native card picker resolves `custom:*` types.
 
 ## Domain facts you rely on
-- `decluttering_templates` lives in a dashboard's Lovelace config (both storage and
-  YAML mode expose it at `hass.lovelace.config.decluttering_templates`). Fall back to
-  the `lovelace/config` websocket command (`hass.callWS({ type: "lovelace/config" })`)
-  when `hass.lovelace` is unavailable.
+- `hass.lovelace` is **not** part of the real `hass` object a plain Lovelace card
+  element receives — verified against `home-assistant/frontend` source. It's
+  component-local state in `ha-panel-lovelace.ts`, only ever passed down as a
+  *separate* property to view/editor elements, never merged onto `hass`. The
+  `lovelace/config` websocket command (`hass.callWS({ type: "lovelace/config",
+  url_path })`) is the only reliable path — and `url_path` is required: omitting it
+  doesn't mean "current dashboard," it always fetches the instance's built-in
+  *default* dashboard. Resolve the actual current dashboard's `url_path` from
+  `window.location.pathname`, cross-checked against `hass.panels` (see
+  `getCurrentDashboardUrlPath` in `src/decluttering-selector.ts`).
 - A template entry has either `card` or `element` (mutually exclusive — `card` for
   normal cards, `element` for picture-elements usage), an optional `default` (array of
   single-key objects, or occasionally a flat object) providing default variable
@@ -25,14 +31,32 @@ authoritative spec for how the native card picker resolves `custom:*` types.
   (`{name: "x"}`) or an array of single-key objects (`[{name: "x"}]`) — this repo
   standardizes on the array-of-objects form when building stub configs, since it's
   the safest/most universally accepted shape.
-- The native "Add Card" picker (`hui-card-picker`) builds its selectable list from
-  `window.customCards`, a global array every custom card (mushroom, button-card, etc)
-  pushes an entry into: `{ type, name, description, preview }`. Clicking an entry
-  calls `getCardStubConfig(type)` which strips any `custom:` prefix and resolves
-  `hui-card-<type>` via the standard `customElements` registry, then calls that
-  element's static `getStubConfig()`. This repo exploits that: it registers one
-  synthetic element per template at tag `hui-card-decluttering-card-<safeName>` whose
-  `getStubConfig()` returns a pre-filled `custom:decluttering-card` config.
+- The native "Add Card" picker (`hui-card-picker`, at
+  `src/panels/lovelace/editor/card-editor/hui-card-picker.ts` in `frontend`) builds
+  its selectable list from `window.customCards`, a global array every custom card
+  (mushroom, button-card, etc) pushes an entry into: `{ type, name, description,
+  preview }`. Clicking an entry calls `getCardStubConfig(type)` →
+  `getCardElementClass(type)` → `customElements.get(stripCustomPrefix(type))` — for
+  **custom** card types this is a direct lookup with **no `hui-card-`/`hui-` prefix
+  at all** (that prefix convention only applies to HA's own *built-in* card types,
+  resolved via a completely different `hui-${type}-card` path). This repo exploits
+  that: it registers one synthetic element per template at tag
+  `decluttering-card-<safeName>` — exactly the same string as the `type` field
+  pushed into `window.customCards`, no prefix — whose `getStubConfig()` returns a
+  pre-filled `custom:decluttering-card` config. Getting this prefix wrong doesn't
+  produce an error: `customElements.get()` silently misses, HA's internal 2s
+  `customElements.whenDefined()` timeout rejects, and since that rejection isn't
+  caught anywhere in `hui-card-picker`, the picker's loading spinner for that entry
+  just stays there forever (confirmed live on a real HA instance — this exact bug
+  shipped once already; see `.changeset/frank-horses-add.md` if present, or
+  `CHANGELOG.md`).
+- The picker's live *preview thumbnail* for a `preview: true` entry does **not**
+  render our registered element at all — `getCardStubConfig` spreads our
+  `getStubConfig()` result (`{ type: "custom:decluttering-card", ... }`) over the
+  draft config, and that spread's `type` wins, so the thumbnail actually constructs
+  and renders the real `decluttering-card`, not our synthetic one. Our element's
+  `render()` only matters if something resolves `custom:decluttering-card-<safeName>`
+  directly — treat it as a minimal safety net, not the picker's actual preview path.
 - This only works because of public extension points (`window.customCards` +
   `customElements`) — no monkey-patching, no forking `hui-card-picker`.
 

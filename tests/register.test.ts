@@ -14,17 +14,16 @@ declare global {
   var customCards: CustomCardEntry[] | undefined;
 }
 
-// PLAN.md's architecture: the window.customCards `type` is `decluttering-card-<safe>`,
-// but the actual registered custom-element tag is `hui-card-decluttering-card-<safe>` —
-// matching HA's own `hui-card-<type>` resolution convention (tryCreateLovelaceElement
-// strips `custom:` then looks up `hui-card-<type>`). These are deliberately different
-// strings, not aliases of each other.
+// HA's custom-card resolution does `customElements.get(stripCustomPrefix(type))`
+// directly — no `hui-card-`/`hui-` prefix (that convention is only for HA's own
+// built-in card types, a different code path). So the registered custom-element tag
+// must be exactly the same string as the window.customCards `type` field.
 function typeFor(meta: TemplateMeta): string {
   return `decluttering-card-${meta.safeName}`;
 }
 
 function tagFor(meta: TemplateMeta): string {
-  return `hui-card-${typeFor(meta)}`;
+  return typeFor(meta);
 }
 
 function makeMeta(safeName: string, overrides: Partial<TemplateMeta> = {}): TemplateMeta {
@@ -86,6 +85,19 @@ describe('registerTemplate', () => {
     const meta = makeMeta('reg-define');
     registerTemplate(meta);
     expect(customElements.get(tagFor(meta))).toBeDefined();
+  });
+
+  it('defines the custom element at exactly the type string HA would resolve, independent of this test file\'s own tag formula', () => {
+    // Deliberately does not use tagFor()/typeFor() — HA resolves a custom card type
+    // as customElements.get(stripCustomPrefix(entry.type)) directly (no hui-card-
+    // prefix), so this reads entry.type straight from window.customCards and checks
+    // customElements against it, matching HA's real behavior rather than whatever
+    // formula this test file happens to compute.
+    const meta = makeMeta('reg-real-resolution');
+    registerTemplate(meta);
+    const entry = window.customCards!.find((c) => c.name === meta.name);
+    expect(entry).toBeDefined();
+    expect(customElements.get(entry!.type)).toBeDefined();
   });
 
   it('getStubConfig on the registered class returns exactly meta.stubConfig', async () => {
