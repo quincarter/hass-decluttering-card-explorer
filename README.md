@@ -6,10 +6,6 @@ into Home Assistant's native "Add Card" picker** — so while you build a dashbo
 every template shows up as a selectable card with a live preview and inserts
 pre-filled.
 
-> **This repo is the scaffold + plan.** The card itself is built task-by-task from
-> [`PLAN.md`](./PLAN.md) by a coding agent (e.g. Claude). See that file for the full
-> breakdown.
-
 ## The problem it solves
 
 [`decluttering-card`](https://github.com/custom-cards/decluttering-card) lets you
