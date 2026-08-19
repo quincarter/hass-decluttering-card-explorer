@@ -1,14 +1,14 @@
-import { LitElement, html, nothing, type PropertyValues } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
-import type { HomeAssistant } from 'custom-card-helpers';
+import { LitElement, html, nothing, type PropertyValues } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import type { HomeAssistant } from "custom-card-helpers";
 import {
   extractTemplates,
   analyzeTemplates,
   getDeclutteringTemplates,
   LovelaceUnavailableError,
-} from './decluttering';
-import { registerAll } from './register';
-import type { DeclutteringTemplates, TemplateMeta } from './types';
+} from "./decluttering";
+import { registerAll } from "./register";
+import type { DeclutteringTemplates, TemplateMeta } from "./types";
 
 interface DeclutteringSelectorConfig {
   title?: string;
@@ -47,16 +47,16 @@ type HassWithLovelace = HomeAssistant & {
  * finds the real one regardless of leading path segments.
  */
 export function getCurrentDashboardUrlPath(hass: HassWithLovelace | undefined): string | undefined {
-  const segments = window.location.pathname.split('/').filter(Boolean);
+  const segments = window.location.pathname.split("/").filter(Boolean);
   for (const segment of segments) {
-    if (hass?.panels?.[segment]?.component_name === 'lovelace') {
+    if (hass?.panels?.[segment]?.component_name === "lovelace") {
       return segment;
     }
   }
   return segments[0];
 }
 
-@customElement('decluttering-selector')
+@customElement("decluttering-selector")
 export class DeclutteringSelector extends LitElement {
   @property({ attribute: false }) public hass?: HassWithLovelace;
 
@@ -67,7 +67,7 @@ export class DeclutteringSelector extends LitElement {
   private _unsubscribe?: () => void;
 
   static async getStubConfig(): Promise<{ type: string }> {
-    return { type: 'custom:decluttering-selector' };
+    return { type: "custom:decluttering-selector" };
   }
 
   public setConfig(config?: DeclutteringSelectorConfig): void {
@@ -75,7 +75,7 @@ export class DeclutteringSelector extends LitElement {
   }
 
   protected updated(changedProperties: PropertyValues): void {
-    if (changedProperties.has('hass')) {
+    if (changedProperties.has("hass")) {
       void this._register();
       this._subscribeToUpdates();
     }
@@ -89,13 +89,16 @@ export class DeclutteringSelector extends LitElement {
         | undefined;
       if (!connection?.subscribeEvents) return;
       this._subscribedToUpdates = true;
-      connection.subscribeEvents(() => {
-        void this._register();
-      }, 'lovelace_updated').then((unsubscribe) => {
-        this._unsubscribe = unsubscribe;
-      }).catch(() => {
-        this._subscribedToUpdates = false;
-      });
+      connection
+        .subscribeEvents(() => {
+          void this._register();
+        }, "lovelace_updated")
+        .then((unsubscribe) => {
+          this._unsubscribe = unsubscribe;
+        })
+        .catch(() => {
+          this._subscribedToUpdates = false;
+        });
     } catch {
       this._subscribedToUpdates = false;
     }
@@ -116,14 +119,14 @@ export class DeclutteringSelector extends LitElement {
       if (!(err instanceof LovelaceUnavailableError)) throw err;
     }
 
-    if (typeof this.hass?.callWS !== 'function') return {};
+    if (typeof this.hass?.callWS !== "function") return {};
 
     const urlPath = getCurrentDashboardUrlPath(this.hass);
 
     try {
       const result = await this.hass.callWS<{
         decluttering_templates?: DeclutteringTemplates;
-      }>({ type: 'lovelace/config', url_path: urlPath });
+      }>({ type: "lovelace/config", url_path: urlPath });
       return extractTemplates(result ?? {});
     } catch (err) {
       // Pre-migration instances may only have the unnamed default dashboard
@@ -131,15 +134,15 @@ export class DeclutteringSelector extends LitElement {
       // Only retry that specific, narrow case — retrying for any other url_path
       // would silently re-fetch the wrong (default) dashboard's config.
       const code = (err as { code?: string } | undefined)?.code;
-      if (urlPath === 'lovelace' && code === 'config_not_found') {
+      if (urlPath === "lovelace" && code === "config_not_found") {
         console.warn(
           'decluttering-selector: no dashboard registered at url_path "lovelace"; falling back ' +
             "to the instance's unnamed default dashboard config (pre-migration HA instance). " +
-            "If this isn't the dashboard you're viewing, its templates won't be registered."
+            "If this isn't the dashboard you're viewing, its templates won't be registered.",
         );
         const result = await this.hass.callWS<{
           decluttering_templates?: DeclutteringTemplates;
-        }>({ type: 'lovelace/config' });
+        }>({ type: "lovelace/config" });
         return extractTemplates(result ?? {});
       }
       throw err;
@@ -153,7 +156,7 @@ export class DeclutteringSelector extends LitElement {
       registerAll(metas);
       this._metas = metas;
     } catch (err) {
-      console.error('decluttering-selector: failed to register templates', err);
+      console.error("decluttering-selector: failed to register templates", err);
       this._metas = [];
     }
   }
@@ -167,7 +170,7 @@ export class DeclutteringSelector extends LitElement {
       return html`
         <div>
           ${title ? html`<h3>${title}</h3>` : null}
-          <p>${count} template${count === 1 ? '' : 's'} registered into Add Card</p>
+          <p>${count} template${count === 1 ? "" : "s"} registered into Add Card</p>
           <ul>
             ${this._metas.map((meta) => html`<li>${meta.name}</li>`)}
           </ul>
@@ -181,6 +184,6 @@ export class DeclutteringSelector extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'decluttering-selector': DeclutteringSelector;
+    "decluttering-selector": DeclutteringSelector;
   }
 }

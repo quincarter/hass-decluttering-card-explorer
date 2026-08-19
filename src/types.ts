@@ -1,4 +1,4 @@
-import type { LovelaceCardConfig } from 'custom-card-helpers';
+import type { LovelaceCardConfig } from "custom-card-helpers";
 
 /** A single `decluttering_templates` entry, in either of decluttering-card's two accepted shapes. */
 export interface DeclutteringTemplate {

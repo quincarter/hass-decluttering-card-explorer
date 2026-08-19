@@ -11,14 +11,16 @@ descriptions (Tasks 4-8) specify the exact function signatures and behavior each
 file must cover.
 
 ## How this repo does TDD
+
 Tests are written **before** the implementation exists. That's expected and correct —
 a test file you write may fail to even compile/import until someone implements the
-module. Write tests against the *intended* API described in PLAN.md (function names,
+module. Write tests against the _intended_ API described in PLAN.md (function names,
 signatures, return shapes), not against code you can currently read. If PLAN.md is
 ambiguous about a return shape, pick the most literal reading and note the assumption
 in your report.
 
 ## What to cover
+
 - **Pure logic** (`tests/decluttering.test.ts` for `src/decluttering.ts`):
   `safeTagName` edge cases (illegal chars, leading digits, repeated separators,
   empty/whitespace-only input, unicode), `buildStubConfig` shape (including the
@@ -44,6 +46,7 @@ in your report.
   `lovelace_updated` updates rather than duplicates picker entries.
 
 ## Conventions
+
 - One `describe` block per exported function/behavior; test names state the expected
   behavior, not the input ("collapses repeated separators", not "test 2").
 - No snapshot tests — assert on specific fields/values so failures are legible.
@@ -51,6 +54,7 @@ in your report.
   that.
 
 ## When you're done
+
 Run `npm run test` yourself and report the pass/fail count. If you wrote tests against
 a module that doesn't exist yet, say so explicitly (expected failure mode: import
 error) rather than treating it as a bug.

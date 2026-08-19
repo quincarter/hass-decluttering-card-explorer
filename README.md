@@ -103,7 +103,7 @@ extension points every other custom card relies on (`window.customCards` +
    built-in cards, each with a live preview. Click one to insert a fully pre-filled
    `custom:decluttering-card`.
 
->[!WARNING] Requirement
+> [!WARNING] Requirement
 > The real [`decluttering-card`](https://github.com/custom-cards/decluttering-card) resource must also be installed — the inserted stub references `type: custom:decluttering-card`, and your `decluttering_templates` already require it to work at all.
 
 ## Usage
@@ -150,10 +150,10 @@ The card only reads templates from the dashboard it's placed on (see
 
 - Optional config:
 
-  | Option | Default | Description |
-  | --- | --- | --- |
-  | `title` | _(none)_ | Heading shown above the status list, if `show_info` is on |
-  | `show_info` | `false` | Set `true` to show the on-dashboard status list |
+  | Option      | Default  | Description                                               |
+  | ----------- | -------- | --------------------------------------------------------- |
+  | `title`     | _(none)_ | Heading shown above the status list, if `show_info` is on |
+  | `show_info` | `false`  | Set `true` to show the on-dashboard status list           |
 
   ```yaml
   type: custom:decluttering-selector
@@ -171,9 +171,9 @@ below.
 
 ![The card's configuration dialog with show_info: true set, and the resulting on-dashboard status list — title, template count, and the name of each registered template](screenshots/card-config.png)
 
-> [!TIP] TIP 
-> Even with `show_info` off, the card can still claim a cell in a grid/sections-based dashboard, since it's still a card, just an empty-looking one. 
-> 
+> [!TIP] TIP
+> Even with `show_info` off, the card can still claim a cell in a grid/sections-based dashboard, since it's still a card, just an empty-looking one.
+>
 > If that bothers you, use Home Assistant's own per-card **Visibility** setting (the "Visibility" tab in the card editor) to hide it from everyone — that keeps it doing its job in the background without affecting your layout at all.
 
 ### 3. Open "Add Card" and pick a template
@@ -193,7 +193,7 @@ With the Decluttering Selector card present and loaded on the dashboard:
 
 Adding, renaming, or editing a template and then **saving the dashboard** fires
 Home Assistant's `lovelace_updated` event, which the card listens for and
-re-registers against automatically — no manual reload needed for the *next* time you
+re-registers against automatically — no manual reload needed for the _next_ time you
 open Add Card.
 
 One caveat: if the Add Card dialog is already **open** when you save a template
@@ -212,7 +212,7 @@ Add `show_info: true` to the card's config first — the status line and templat
 these steps refer to are hidden by default.
 
 - **"0 templates registered" on the status line** — confirm `decluttering_templates`
-  is actually defined at the top level of *this* dashboard's config (not a different
+  is actually defined at the top level of _this_ dashboard's config (not a different
   one), and check the browser console for a
   `decluttering-selector: failed to register templates` error, which points at the
   underlying failure.
