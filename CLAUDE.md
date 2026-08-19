@@ -122,7 +122,7 @@ understanding what the automation does.
 ### Automated flow (`.github/workflows/`)
 
 1. **`version-pr.yml`** — on every push to `main`, runs `changesets/action` with only
-   a `version` command configured (no `publish` input) so it *only* opens/updates a
+   a `version` command configured (no `publish` input) so it _only_ opens/updates a
    "Version Packages" PR when pending `.changeset/*.md` files exist. That PR contains
    the `npm run version` result: the `package.json` bump + `CHANGELOG.md` entry.
 2. Merging that PR pushes the version bump to `main`.

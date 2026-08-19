@@ -1,14 +1,14 @@
-import type { LovelaceCardConfig } from 'custom-card-helpers';
-import type { DeclutteringTemplate, DeclutteringTemplates, TemplateMeta } from './types';
+import type { LovelaceCardConfig } from "custom-card-helpers";
+import type { DeclutteringTemplate, DeclutteringTemplates, TemplateMeta } from "./types";
 
 const PLACEHOLDER_RE = /\[\[([a-zA-Z0-9_]+)\]\]/g;
 
 export function safeTagName(name: string): string {
   const lowered = name.toLowerCase();
-  const replaced = lowered.replace(/[^a-z0-9-]/g, '-');
-  const collapsed = replaced.replace(/-+/g, '-');
-  const trimmed = collapsed.replace(/^-+|-+$/g, '');
-  if (trimmed === '') return trimmed;
+  const replaced = lowered.replace(/[^a-z0-9-]/g, "-");
+  const collapsed = replaced.replace(/-+/g, "-");
+  const trimmed = collapsed.replace(/^-+|-+$/g, "");
+  if (trimmed === "") return trimmed;
   return /^[0-9]/.test(trimmed) ? `t-${trimmed}` : trimmed;
 }
 
@@ -19,9 +19,9 @@ export function extractTemplates(config: {
 }
 
 export class LovelaceUnavailableError extends Error {
-  constructor(message = 'hass.lovelace.config is unavailable') {
+  constructor(message = "hass.lovelace.config is unavailable") {
     super(message);
-    this.name = 'LovelaceUnavailableError';
+    this.name = "LovelaceUnavailableError";
   }
 }
 
@@ -39,7 +39,7 @@ type HassWithLovelace = {
  * that fallback decision.
  */
 export function getDeclutteringTemplates(
-  hass: HassWithLovelace | undefined | null
+  hass: HassWithLovelace | undefined | null,
 ): DeclutteringTemplates {
   const config = hass?.lovelace?.config;
   if (!config) {
@@ -53,9 +53,7 @@ export function getDeclutteringTemplates(
  * accepts both). Flattening to a single map lets buildStubConfig and analyzeTemplates
  * share the same "what defaults exist" logic without duplicating the merge rules.
  */
-function flattenDefault(
-  templateDefault: DeclutteringTemplate['default']
-): Record<string, unknown> {
+function flattenDefault(templateDefault: DeclutteringTemplate["default"]): Record<string, unknown> {
   if (templateDefault === undefined) return {};
   if (Array.isArray(templateDefault)) {
     const merged: Record<string, unknown> = {};
@@ -64,7 +62,7 @@ function flattenDefault(
     }
     return merged;
   }
-  if (typeof templateDefault !== 'object' || templateDefault === null) return {};
+  if (typeof templateDefault !== "object" || templateDefault === null) return {};
   return { ...templateDefault };
 }
 
@@ -72,13 +70,10 @@ function mapToVariableArray(map: Record<string, unknown>): Array<Record<string, 
   return Object.entries(map).map(([key, value]) => ({ [key]: value }));
 }
 
-export function buildStubConfig(
-  name: string,
-  template: DeclutteringTemplate
-): LovelaceCardConfig {
+export function buildStubConfig(name: string, template: DeclutteringTemplate): LovelaceCardConfig {
   const flattened = flattenDefault(template.default);
   return {
-    type: 'custom:decluttering-card',
+    type: "custom:decluttering-card",
     template: name,
     variables: mapToVariableArray(flattened),
   } as LovelaceCardConfig;
@@ -105,7 +100,7 @@ export function analyzeTemplates(templates: DeclutteringTemplates): TemplateMeta
     const flattenedDefaults = flattenDefault(template.default);
     const placeholders = findPlaceholders(template.card ?? template.element ?? {});
     const requiredVariables = placeholders.filter(
-      (variableName) => !(variableName in flattenedDefaults)
+      (variableName) => !(variableName in flattenedDefaults),
     );
 
     return {

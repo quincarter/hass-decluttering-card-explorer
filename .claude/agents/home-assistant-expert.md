@@ -12,14 +12,15 @@ section is grounded in the real `home-assistant/frontend` source and is the
 authoritative spec for how the native card picker resolves `custom:*` types.
 
 ## Domain facts you rely on
+
 - `hass.lovelace` is **not** part of the real `hass` object a plain Lovelace card
   element receives — verified against `home-assistant/frontend` source. It's
   component-local state in `ha-panel-lovelace.ts`, only ever passed down as a
-  *separate* property to view/editor elements, never merged onto `hass`. The
+  _separate_ property to view/editor elements, never merged onto `hass`. The
   `lovelace/config` websocket command (`hass.callWS({ type: "lovelace/config",
-  url_path })`) is the only reliable path — and `url_path` is required: omitting it
+url_path })`) is the only reliable path — and `url_path` is required: omitting it
   doesn't mean "current dashboard," it always fetches the instance's built-in
-  *default* dashboard. Resolve the actual current dashboard's `url_path` from
+  _default_ dashboard. Resolve the actual current dashboard's `url_path` from
   `window.location.pathname`, cross-checked against `hass.panels` (see
   `getCurrentDashboardUrlPath` in `src/decluttering-selector.ts`).
 - A template entry has either `card` or `element` (mutually exclusive — `card` for
@@ -35,10 +36,10 @@ authoritative spec for how the native card picker resolves `custom:*` types.
   `src/panels/lovelace/editor/card-editor/hui-card-picker.ts` in `frontend`) builds
   its selectable list from `window.customCards`, a global array every custom card
   (mushroom, button-card, etc) pushes an entry into: `{ type, name, description,
-  preview }`. Clicking an entry calls `getCardStubConfig(type)` →
+preview }`. Clicking an entry calls `getCardStubConfig(type)` →
   `getCardElementClass(type)` → `customElements.get(stripCustomPrefix(type))` — for
   **custom** card types this is a direct lookup with **no `hui-card-`/`hui-` prefix
-  at all** (that prefix convention only applies to HA's own *built-in* card types,
+  at all** (that prefix convention only applies to HA's own _built-in_ card types,
   resolved via a completely different `hui-${type}-card` path). This repo exploits
   that: it registers one synthetic element per template at tag
   `decluttering-card-<safeName>` — exactly the same string as the `type` field
@@ -50,7 +51,7 @@ authoritative spec for how the native card picker resolves `custom:*` types.
   just stays there forever (confirmed live on a real HA instance — this exact bug
   shipped once already; see `.changeset/frank-horses-add.md` if present, or
   `CHANGELOG.md`).
-- The picker's live *preview thumbnail* for a `preview: true` entry does **not**
+- The picker's live _preview thumbnail_ for a `preview: true` entry does **not**
   render our registered element at all — `getCardStubConfig` spreads our
   `getStubConfig()` result (`{ type: "custom:decluttering-card", ... }`) over the
   draft config, and that spread's `type` wins, so the thumbnail actually constructs
@@ -61,25 +62,28 @@ authoritative spec for how the native card picker resolves `custom:*` types.
   `customElements`) — no monkey-patching, no forking `hui-card-picker`.
 
 ## Conventions to follow
+
 - Pure parsing/analysis logic (`src/decluttering.ts`) must have **zero DOM or
   `window`/`customElements` references** — it must be usable and testable outside a
   browser. DOM/registry glue belongs in `src/register.ts` /
   `src/decluttering-selector.ts`, not here.
 - `getDeclutteringTemplates(hass)` throws a typed/recognizable error when
-  `hass.lovelace?.config?.decluttering_templates` is unavailable — the *caller*
+  `hass.lovelace?.config?.decluttering_templates` is unavailable — the _caller_
   (the Lit element) is responsible for catching it and falling back to the websocket
   call, not this function.
-- No comments explaining *what* code does. Only comment non-obvious domain *why*
+- No comments explaining _what_ code does. Only comment non-obvious domain _why_
   (e.g. why `card`/`element` are mutually exclusive, why placeholders can appear
   nested).
 
 ## Testing
+
 Every file you write or change needs Vitest coverage (pure logic → plain Vitest, no
 DOM needed). Write/update `tests/decluttering.test.ts` (or the relevant test file) in
 the same turn as the implementation. Run `npm run test` yourself before reporting
 done and fix failures rather than describing them.
 
 ## When you're done
+
 Report exactly which files you created/changed, the test command you ran, and its
 result (pass/fail counts). If you deviated from PLAN.md's spec for a task, say what
 and why.

@@ -18,7 +18,7 @@ included in the next version bump and release.
    - `major` — a breaking change to the card's config shape or behavior (rare, and
      this package is pre-1.0, so reserve it for something that would genuinely
      surprise an existing user).
-   If you're unsure, use `patch` rather than guessing upward.
+     If you're unsure, use `patch` rather than guessing upward.
 2. Write the description as you would a CHANGELOG entry: a complete sentence (or a
    couple of short ones), specific about what changed and why it matters to someone
    reading release notes — not a commit-message fragment. This text is read verbatim

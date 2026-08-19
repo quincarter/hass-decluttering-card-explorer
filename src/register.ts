@@ -1,5 +1,5 @@
-import { LitElement, html } from 'lit';
-import type { TemplateMeta } from './types';
+import { LitElement, html } from "lit";
+import type { TemplateMeta } from "./types";
 
 interface CustomCardEntry {
   type: string;
@@ -32,8 +32,10 @@ export function makePreviewElement(tag: string, meta: TemplateMeta): typeof LitE
     render() {
       try {
         const current = currentMetaByTag.get(tag) ?? meta;
-        const name = typeof current?.name === 'string' && current.name.length > 0 ? current.name : 'Template';
-        const variableCount = typeof current?.variableCount === 'number' ? current.variableCount : 0;
+        const name =
+          typeof current?.name === "string" && current.name.length > 0 ? current.name : "Template";
+        const variableCount =
+          typeof current?.variableCount === "number" ? current.variableCount : 0;
         return html`<div>${name} — ${variableCount} var(s)</div>`;
       } catch {
         return html`<div>Template</div>`;
