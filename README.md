@@ -103,7 +103,7 @@ extension points every other custom card relies on (`window.customCards` +
    built-in cards, each with a live preview. Click one to insert a fully pre-filled
    `custom:decluttering-card`.
 
-> [!WARNING] Requirement
+> [!WARNING]
 > The real [`decluttering-card`](https://github.com/custom-cards/decluttering-card) resource must also be installed — the inserted stub references `type: custom:decluttering-card`, and your `decluttering_templates` already require it to work at all.
 
 ## Usage
@@ -171,7 +171,7 @@ below.
 
 ![The card's configuration dialog with show_info: true set, and the resulting on-dashboard status list — title, template count, and the name of each registered template](screenshots/card-config.png)
 
-> [!TIP] TIP
+> [!TIP]
 > Even with `show_info` off, the card can still claim a cell in a grid/sections-based dashboard, since it's still a card, just an empty-looking one.
 >
 > If that bothers you, use Home Assistant's own per-card **Visibility** setting (the "Visibility" tab in the card editor) to hide it from everyone — that keeps it doing its job in the background without affecting your layout at all.
