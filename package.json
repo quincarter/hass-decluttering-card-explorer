@@ -4,6 +4,9 @@
   "private": true,
   "description": "Registers your decluttering-card templates into Home Assistant's native Add Card picker",
   "type": "module",
+  "engines": {
+    "node": ">=22.1"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
