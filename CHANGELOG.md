@@ -1,5 +1,11 @@
 # decluttering-selector
 
+## 0.3.0
+
+### Minor Changes
+
+- a98feae: The on-dashboard status list (title, template count, template names) is now hidden by default — this card's job is registering templates into the native Add Card picker, not adding a visible block to your dashboard. Add show_info: true to the card's config to see it again.
+
 ## 0.2.2
 
 ### Patch Changes
