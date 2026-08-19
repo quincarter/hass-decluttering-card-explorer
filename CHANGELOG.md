@@ -1,5 +1,15 @@
 # decluttering-selector
 
+## 0.2.0
+
+### Minor Changes
+
+- ab76b33: Add a non-interactive changeset script (scripts/add-changeset.mjs) and a /release-note Claude Code skill that invokes it, so recording a release-note-worthy change no longer needs the interactive changeset prompt. release.yml now sources GitHub release notes from the matching CHANGELOG.md section instead of auto-generated commit notes, so these descriptions flow all the way through to the published release.
+
+### Patch Changes
+
+- fa14efe: Fix the version-bump GitHub Actions workflow crashing with "enableCompileCache is not a function" — @changesets/cli 3.x requires Node 22.1+, but the workflow was pinned to Node 20. Both workflows now use Node 24, and package.json declares an explicit engines.node requirement so this doesn't regress silently again.
+
 ## 0.1.1
 
 ### Patch Changes
