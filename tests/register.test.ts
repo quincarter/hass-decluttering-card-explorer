@@ -95,7 +95,7 @@ describe("registerTemplate", () => {
     // formula this test file happens to compute.
     const meta = makeMeta("reg-real-resolution");
     registerTemplate(meta);
-    const entry = window.customCards!.find((c) => c.name === meta.name);
+    const entry = window.customCards!.find((c) => c.name === `Decluttering: ${meta.name}`);
     expect(entry).toBeDefined();
     expect(customElements.get(entry!.type)).toBeDefined();
   });
@@ -121,7 +121,7 @@ describe("registerTemplate", () => {
     registerTemplate(meta);
     const entry = window.customCards!.find((c) => c.type === typeFor(meta));
     expect(entry).toBeDefined();
-    expect(entry?.name).toBe("My Cool Template");
+    expect(entry?.name).toBe("Decluttering: My Cool Template");
     expect(entry?.preview).toBe(true);
   });
 
@@ -219,7 +219,7 @@ describe("registerTemplate tag collisions", () => {
 
     const matches = window.customCards!.filter((c) => c.type === typeFor(metaFirst));
     expect(matches).toHaveLength(1);
-    expect(matches[0].name).toBe("First Collider");
+    expect(matches[0].name).toBe("Decluttering: First Collider");
 
     const Cls = customElements.get(tagFor(metaFirst)) as unknown as {
       getStubConfig: () => Promise<unknown>;
@@ -268,13 +268,13 @@ describe("registerAll tag reconciliation across passes", () => {
 
     let matches = window.customCards!.filter((c) => c.type === typeFor(ownerMeta));
     expect(matches).toHaveLength(1);
-    expect(matches[0].name).toBe("Owner");
+    expect(matches[0].name).toBe("Decluttering: Owner");
 
     registerAll([loserMeta]);
 
     matches = window.customCards!.filter((c) => c.type === typeFor(loserMeta));
     expect(matches).toHaveLength(1);
-    expect(matches[0].name).toBe("Loser");
+    expect(matches[0].name).toBe("Decluttering: Loser");
 
     const Cls = customElements.get(tagFor(loserMeta)) as unknown as {
       getStubConfig: () => Promise<unknown>;

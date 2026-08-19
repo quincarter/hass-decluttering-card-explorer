@@ -638,7 +638,7 @@ function je(e) {
 	Z.set(n, e), customElements.get(n) || customElements.define(n, Ae(n, e)), Array.isArray(window.customCards) || (window.customCards = []);
 	let i = {
 		type: t,
-		name: e.name,
+		name: `Decluttering: ${e.name}`,
 		description: `Insert a "${e.name}" card (${e.variableCount} var(s)) from your decluttering templates.`,
 		preview: !0
 	}, a = window.customCards.findIndex((e) => e.type === t);
