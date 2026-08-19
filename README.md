@@ -51,7 +51,9 @@ extension points every other custom card relies on (`window.customCards` +
 - Registers each template into the native Add Card picker (name, description, live preview)
 - Clicking a template inserts a **pre-filled** `custom:decluttering-card`
 - Re-registers on `lovelace_updated` (dashboard saved)
-- Bonus: an in-dashboard explorer list (variables, usage count, expandable raw YAML, "Copy YAML")
+- Bonus: the card itself renders a small on-dashboard status list — an optional
+  title, a count of templates registered, and the name of each one — so you can
+  confirm at a glance that it found your templates
 
 ## Installation
 
@@ -107,6 +109,102 @@ extension points every other custom card relies on (`window.customCards` +
 > must also be installed — the inserted stub references
 > `type: custom:decluttering-card`, and your `decluttering_templates` already require
 > it to work at all.
+
+## Usage
+
+### 1. Have some `decluttering_templates` defined
+
+This card doesn't create templates — it surfaces ones that already exist. If you
+don't have any yet, define them at the top level of your dashboard's config (works
+in both storage mode and YAML mode):
+
+```yaml
+decluttering_templates:
+  room-header:
+    card:
+      type: entities
+      title: "[[title]]"
+      entities:
+        - "[[entity]]"
+    default:
+      - title: My Room
+        entity: sensor.example
+```
+
+`[[title]]` and `[[entity]]` are placeholders — the `default:` block above supplies
+the values Decluttering Selector will pre-fill when it registers this template.
+
+### 2. Add the card to that same dashboard
+
+The card only reads templates from the dashboard it's placed on (see
+[Scope](#scope-current-dashboard-only) below), so add it there, once:
+
+- **UI editor:** Edit Dashboard → **+ Add Card** → search for **"Decluttering
+  Selector"** → Add.
+- **YAML:**
+
+  ```yaml
+  type: custom:decluttering-selector
+  ```
+
+- Optional config — `title` is the only option (shown above the status list):
+
+  ```yaml
+  type: custom:decluttering-selector
+  title: My Templates
+  ```
+
+Once added, the card itself renders a small status block: your optional `title`, a
+line like "3 templates registered into Add Card", and a plain list of the template
+names it found. That's just a confirmation readout — the actual point of the card is
+what it does to the **Add Card** picker (next step).
+
+### 3. Open "Add Card" and pick a template
+
+With the Decluttering Selector card present and loaded on the dashboard:
+
+1. Edit the dashboard → **+ Add Card**.
+2. Your templates now appear in the picker alongside the built-in cards, named after
+   the template (e.g. **"room-header"**), each with a live preview.
+3. Click one — it inserts a fully pre-filled `custom:decluttering-card` (with
+   `template:` set to the template name and `variables:` set to its `default:`
+   values), ready to use or tweak.
+4. If a variable has no default in the template, it's inserted without a value —
+   edit the card's YAML afterward to fill it in.
+
+### Staying in sync
+
+Adding, renaming, or editing a template and then **saving the dashboard** fires
+Home Assistant's `lovelace_updated` event, which the card listens for and
+re-registers against automatically — no manual reload needed for the *next* time you
+open Add Card.
+
+One caveat: if the Add Card dialog is already **open** when you save a template
+change, it won't live-refresh mid-session (Home Assistant loads the picker's card
+list once, on open) — close and reopen it to see the update.
+
+### Scope: current dashboard only
+
+Only the dashboard the card is placed on is scanned. Templates defined on a
+different dashboard won't show up here — add a copy of this card to each dashboard
+whose templates you want in that dashboard's picker.
+
+### Troubleshooting
+
+- **"0 templates registered" on the status line** — confirm `decluttering_templates`
+  is actually defined at the top level of *this* dashboard's config (not a different
+  one), and check the browser console for a
+  `decluttering-selector: failed to register templates` error, which points at the
+  underlying failure.
+- **Templates registered, but not showing in Add Card** — close and reopen the Add
+  Card dialog (see [Staying in sync](#staying-in-sync) above).
+- **Two templates collapse into one entry / one seems to disappear** — template
+  names are sanitized into element-tag-safe names (lowercased, non-`[a-z0-9-]`
+  characters collapsed to `-`); two names that only differ in case or punctuation
+  (e.g. `My Card` vs `my-card`) can collide. Rename one to be more distinct.
+- **Inserted card is missing a variable's value** — only variables present in the
+  template's `default:` block get pre-filled; anything else needs to be filled in by
+  hand after inserting.
 
 ## Development
 
