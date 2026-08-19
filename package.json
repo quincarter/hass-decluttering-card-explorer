@@ -1,6 +1,6 @@
 {
   "name": "decluttering-selector",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "description": "Registers your decluttering-card templates into Home Assistant's native Add Card picker",
   "type": "module",
