@@ -6,6 +6,8 @@ into Home Assistant's native "Add Card" picker** — so while you build a dashbo
 every template shows up as a selectable card with a live preview and inserts
 pre-filled.
 
+![Home Assistant's "Add Card" picker showing decluttering templates as selectable cards, each with a live preview](screenshots/adding-a-card-to-the-dashboard.png)
+
 ## The problem it solves
 
 [`decluttering-card`](https://github.com/custom-cards/decluttering-card) lets you
@@ -131,6 +133,11 @@ decluttering_templates:
 `[[title]]` and `[[entity]]` are placeholders — the `default:` block above supplies
 the values Decluttering Selector will pre-fill when it registers this template.
 
+A real dashboard usually has many of these — `decluttering_templates:` at the top,
+sibling to `views:`:
+
+![A dashboard's raw YAML configuration with several decluttering_templates entries defined at the top level](screenshots/edit-config.png)
+
 ### 2. Add the card to that same dashboard
 
 The card only reads templates from the dashboard it's placed on (see
@@ -164,6 +171,8 @@ block cluttering up a real dashboard. Set `show_info: true` to see it: your opti
 template names it found. Handy while confirming templates were picked up, or
 debugging why one isn't showing in Add Card — see [Troubleshooting](#troubleshooting)
 below.
+
+![The card's configuration dialog with show_info: true set, and the resulting on-dashboard status list — title, template count, and the name of each registered template](screenshots/card-config.png)
 
 ### 3. Open "Add Card" and pick a template
 
