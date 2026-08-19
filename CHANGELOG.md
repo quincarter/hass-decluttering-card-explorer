@@ -1,5 +1,11 @@
 # decluttering-selector
 
+## 0.3.2
+
+### Patch Changes
+
+- 6fef776: Add screenshots to README.md showing the Add Card picker with live template previews, an example dashboard's decluttering_templates config, and the optional show_info status list.
+
 ## 0.3.1
 
 ### Patch Changes
