@@ -1,5 +1,11 @@
 # decluttering-selector
 
+## 0.3.5
+
+### Patch Changes
+
+- ec8e2aa: Fixed the README to reference the actual current version instead of a stale v1 label.
+
 ## 0.3.4
 
 ### Patch Changes
