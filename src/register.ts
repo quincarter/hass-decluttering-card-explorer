@@ -72,7 +72,11 @@ export function registerTemplate(meta: TemplateMeta): void {
 
   const entry: CustomCardEntry = {
     type,
-    name: meta.name,
+    // HA's Add Card picker has no per-entry category/group field — every
+    // window.customCards entry flattens alphabetically into one "Community cards"
+    // list. Prefixing the name clusters all decluttering templates together there
+    // instead of scattering them under each template's own name.
+    name: `Decluttering: ${meta.name}`,
     description: `Insert a "${meta.name}" card (${meta.variableCount} var(s)) from your decluttering templates.`,
     preview: true,
   };
