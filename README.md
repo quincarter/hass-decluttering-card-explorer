@@ -43,7 +43,7 @@ No forking of Home Assistant's frontend and no monkey-patching — only the same
 extension points every other custom card relies on (`window.customCards` +
 `customElements`).
 
-## What it does (v0.3.x)
+## What it does (v0.4.x)
 
 - Reads `decluttering_templates` from the current dashboard
 - Registers each template into the native Add Card picker (name, description, live preview)
