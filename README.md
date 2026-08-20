@@ -48,6 +48,9 @@ extension points every other custom card relies on (`window.customCards` +
 - Reads `decluttering_templates` from the current dashboard
 - Registers each template into the native Add Card picker (name, description, live preview)
 - Clicking a template inserts a **pre-filled** `custom:decluttering-card`
+- Optional `dedicated_picker: true` swaps that per-template list for a single
+  **"Decluttering: Choose a Template"** entry whose own editor shows a searchable,
+  live-previewed grid of every template instead — see `dedicated_picker` below
 - Re-registers on `lovelace_updated` (dashboard saved)
 - Optional on-dashboard status list — a title, a count of templates registered, and
   the name of each one, for confirming at a glance that it found your templates.
@@ -150,15 +153,38 @@ The card only reads templates from the dashboard it's placed on (see
 
 - Optional config:
 
-  | Option      | Default  | Description                                               |
-  | ----------- | -------- | --------------------------------------------------------- |
-  | `title`     | _(none)_ | Heading shown above the status list, if `show_info` is on |
-  | `show_info` | `false`  | Set `true` to show the on-dashboard status list           |
+  | Option             | Default  | Description                                                       |
+  | ------------------ | -------- | ----------------------------------------------------------------- |
+  | `title`            | _(none)_ | Heading shown above the status list, if `show_info` is on         |
+  | `show_info`        | `false`  | Set `true` to show the on-dashboard status list                   |
+  | `dedicated_picker` | `false`  | Set `true` to switch how templates appear in Add Card — see below |
 
   ```yaml
   type: custom:decluttering-selector
   show_info: true
   title: My Templates
+  ```
+
+  `dedicated_picker` controls which of two mutually exclusive flows registers
+  templates into the Add Card picker:
+
+  - **`false` (default) — per-template flow.** One picker entry per template,
+    each named **"Decluttering: `<template name>`"**. Fastest for inserting a
+    specific, already-known template — search or scroll straight to it. This is
+    what [step 3](#3-open-add-card-and-pick-a-template) below describes.
+  - **`true` — dedicated-picker flow.** A single **"Decluttering: Choose a
+    Template"** entry replaces all the per-template rows entirely — none of them
+    appear in Add Card in this mode. That one entry's own editor shows a
+    searchable, live-previewed grid of every template instead, and is sorted to
+    the very top of the picker's "Community cards" list regardless of what else
+    is installed. Best when you have many templates and would rather search
+    inside one dedicated UI than scroll a flat list of rows. See
+    [Alternative: one picker card for every template](#alternative-one-picker-card-for-every-template)
+    below.
+
+  ```yaml
+  type: custom:decluttering-selector
+  dedicated_picker: true
   ```
 
 By default the card renders nothing visible on the dashboard — it's only there to
@@ -178,16 +204,44 @@ below.
 
 ### 3. Open "Add Card" and pick a template
 
-With the Decluttering Selector card present and loaded on the dashboard:
+With the Decluttering Selector card present, loaded on the dashboard, and
+`dedicated_picker` left at its default (`false`):
 
 1. Edit the dashboard → **+ Add Card**.
-2. Your templates now appear in the picker alongside the built-in cards, named after
-   the template (e.g. **"room-header"**), each with a live preview.
+2. Your templates now appear in the picker alongside the built-in cards, each named
+   **"Decluttering: `<template name>`"** (e.g. **"Decluttering: room-header"**) — the
+   prefix groups them together in the alphabetically-sorted "Community cards" list —
+   with a live preview.
 3. Click one — it inserts a fully pre-filled `custom:decluttering-card` (with
    `template:` set to the template name and `variables:` set to its `default:`
    values), ready to use or tweak.
 4. If a variable has no default in the template, it's inserted without a value —
    edit the card's YAML afterward to fill it in.
+
+#### Alternative: one picker card for every template
+
+Home Assistant's Add Card picker has no concept of a custom, expandable category for
+community cards — every one of the per-template entries above lands in the same flat
+list as everyone else's cards. If you'd rather not scroll past a row per template, set
+`dedicated_picker: true` on the Decluttering Selector card:
+
+```yaml
+type: custom:decluttering-selector
+dedicated_picker: true
+```
+
+This **replaces** the per-template rows with a single **"Decluttering: Choose a
+Template"** entry — none of the individual templates show up as their own picker rows
+in this mode. That one entry inserts one card, `custom:decluttering-template-picker`,
+sorted to the top of the "Community cards" list. Its own editor (opened automatically
+after you add it, or via **Edit Card** later) shows a searchable grid of every
+template on this dashboard, each with its own live preview — type to filter, click one
+to select it, and it renders right there, the same as inserting it directly. Switch
+templates any time by reopening the card's editor and choosing a different one.
+
+Changing `dedicated_picker` on an already-placed Decluttering Selector card swaps
+which entries appear the next time you open Add Card — it doesn't require re-adding
+the card.
 
 ### Staying in sync
 

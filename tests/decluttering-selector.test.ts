@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import "../src/decluttering-selector";
 import { getCurrentDashboardUrlPath } from "../src/decluttering-selector";
 import { safeTagName } from "../src/decluttering";
+import { getRegisteredMetas } from "../src/register";
 import type { DeclutteringTemplate, DeclutteringTemplates } from "../src/types";
 
 interface CustomCardEntry {
@@ -120,6 +121,11 @@ describe("setConfig", () => {
     const el = createElement();
     expect(() => el.setConfig!({ show_info: true })).not.toThrow();
   });
+
+  it("accepts an optional dedicated_picker field without throwing", () => {
+    const el = createElement();
+    expect(() => el.setConfig!({ dedicated_picker: true })).not.toThrow();
+  });
 });
 
 describe("registration from hass.lovelace.config", () => {
@@ -135,7 +141,11 @@ describe("registration from hass.lovelace.config", () => {
     for (const type of expectedTypes) {
       expect(window.customCards!.some((c) => c.type === type)).toBe(true);
     }
+    // Default mode (dedicated_picker false/absent): only the 2 per-template
+    // entries are registered; the single wrapper "Choose a Template" entry is
+    // NOT registered in this mode.
     expect(window.customCards).toHaveLength(2);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
 
     document.body.removeChild(el);
   });
@@ -164,6 +174,7 @@ describe("registration fallback via hass.callWS", () => {
     for (const type of expectedTypes) {
       expect(window.customCards!.some((c) => c.type === type)).toBe(true);
     }
+    // Default mode: 2 per-template entries only, no wrapper picker entry.
     expect(window.customCards).toHaveLength(2);
 
     document.body.removeChild(el);
@@ -190,6 +201,7 @@ describe("registration fallback via hass.callWS", () => {
 
     expect(callWS).toHaveBeenNthCalledWith(1, { type: "lovelace/config", url_path: "lovelace" });
     expect(callWS).toHaveBeenNthCalledWith(2, { type: "lovelace/config" });
+    // Default mode: 1 per-template entry only, no wrapper picker entry.
     expect(window.customCards).toHaveLength(1);
 
     document.body.removeChild(el);
@@ -212,6 +224,9 @@ describe("registration fallback via hass.callWS", () => {
     await flush(el);
 
     expect(callWS).toHaveBeenCalledTimes(1);
+    // _resolveTemplates() throws before _register()'s try block ever reaches
+    // registerAll()/registerTemplatePickerCard(), so nothing gets registered,
+    // including the picker card.
     expect(window.customCards).toHaveLength(0);
     expect(consoleError).toHaveBeenCalled();
 
@@ -273,6 +288,7 @@ describe("registration when hass.panels has not hydrated yet", () => {
     await flush(el);
 
     expect(callWS).toHaveBeenCalledWith({ type: "lovelace/config", url_path: "my-dashboard" });
+    // Default mode: 1 per-template entry only, no wrapper picker entry.
     expect(window.customCards).toHaveLength(1);
 
     document.body.removeChild(el);
@@ -418,7 +434,99 @@ describe("idempotent re-registration", () => {
     el.hass = secondHass;
     await flush(el);
 
+    // Default mode: 3 per-template entries, still exactly 3 (not duplicated)
+    // even after _register() has run twice (idempotent).
     expect(window.customCards).toHaveLength(3);
+
+    document.body.removeChild(el);
+  });
+});
+
+describe("dedicated_picker mode", () => {
+  it("registers only the single wrapper entry, not any per-template entries, when dedicated_picker is true", async () => {
+    const templates = makeTemplates("dedicated-only", 3);
+    const el = createElement();
+    el.setConfig!({ dedicated_picker: true });
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(window.customCards).toHaveLength(1);
+    expect(window.customCards![0].type).toBe("decluttering-template-picker");
+
+    const expectedTypes = Object.keys(templates).map(typeForName);
+    for (const type of expectedTypes) {
+      expect(window.customCards!.some((c) => c.type === type)).toBe(false);
+    }
+
+    document.body.removeChild(el);
+  });
+
+  it("still fully populates getRegisteredMetas() in dedicated_picker mode even though per-template picker entries are suppressed", async () => {
+    const templates = makeTemplates("dedicated-metas", 3);
+    const el = createElement();
+    el.setConfig!({ dedicated_picker: true });
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    const registeredNames = getRegisteredMetas().map((m) => m.name);
+    for (const name of Object.keys(templates)) {
+      expect(registeredNames).toContain(name);
+    }
+
+    document.body.removeChild(el);
+  });
+
+  it("does not accumulate entries from both modes when switching from default to dedicated_picker mid-session", async () => {
+    const templates = makeTemplates("mode-switch-to-dedicated", 2);
+    const el = createElement();
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(window.customCards).toHaveLength(2);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
+
+    el.setConfig!({ dedicated_picker: true });
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(window.customCards).toHaveLength(1);
+    expect(window.customCards![0].type).toBe("decluttering-template-picker");
+    const expectedTypes = Object.keys(templates).map(typeForName);
+    for (const type of expectedTypes) {
+      expect(window.customCards!.some((c) => c.type === type)).toBe(false);
+    }
+
+    document.body.removeChild(el);
+  });
+
+  it("does not accumulate entries from both modes when switching from dedicated_picker back to default mid-session", async () => {
+    const templates = makeTemplates("mode-switch-to-default", 2);
+    const el = createElement();
+    el.setConfig!({ dedicated_picker: true });
+    document.body.appendChild(el);
+
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(window.customCards).toHaveLength(1);
+    expect(window.customCards![0].type).toBe("decluttering-template-picker");
+
+    el.setConfig!({ dedicated_picker: false });
+    el.hass = makeHass(templates);
+    await flush(el);
+
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
+    const expectedTypes = Object.keys(templates).map(typeForName);
+    for (const type of expectedTypes) {
+      expect(window.customCards!.some((c) => c.type === type)).toBe(true);
+    }
+    expect(window.customCards).toHaveLength(2);
 
     document.body.removeChild(el);
   });
