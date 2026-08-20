@@ -153,11 +153,11 @@ The card only reads templates from the dashboard it's placed on (see
 
 - Optional config:
 
-  | Option            | Default  | Description                                                                     |
-  | ------------------ | -------- | -------------------------------------------------------------------------------- |
-  | `title`            | _(none)_ | Heading shown above the status list, if `show_info` is on                       |
-  | `show_info`        | `false`  | Set `true` to show the on-dashboard status list                                 |
-  | `dedicated_picker` | `false`  | Set `true` to switch how templates appear in Add Card — see below               |
+  | Option             | Default  | Description                                                       |
+  | ------------------ | -------- | ----------------------------------------------------------------- |
+  | `title`            | _(none)_ | Heading shown above the status list, if `show_info` is on         |
+  | `show_info`        | `false`  | Set `true` to show the on-dashboard status list                   |
+  | `dedicated_picker` | `false`  | Set `true` to switch how templates appear in Add Card — see below |
 
   ```yaml
   type: custom:decluttering-selector

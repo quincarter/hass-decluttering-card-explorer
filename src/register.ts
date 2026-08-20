@@ -44,10 +44,7 @@ export function makePreviewElement(tag: string, meta: TemplateMeta): typeof LitE
   };
 }
 
-export function registerTemplate(
-  meta: TemplateMeta,
-  options?: { registerCard?: boolean }
-): void {
+export function registerTemplate(meta: TemplateMeta, options?: { registerCard?: boolean }): void {
   const registerCard = options?.registerCard ?? true;
   const type = `decluttering-card-${meta.safeName}`;
   // HA's custom-card resolution (getLovelaceElementClass) does
@@ -152,7 +149,7 @@ export function registerTemplatePickerCard(register: boolean): void {
 
 export function registerAll(
   metas: TemplateMeta[],
-  options?: { registerCards?: boolean }
+  options?: { registerCards?: boolean },
 ): string[] {
   const registerCards = options?.registerCards ?? true;
   const namesInBatch = new Set(metas.map((m) => m.name));

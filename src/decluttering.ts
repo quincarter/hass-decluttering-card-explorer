@@ -40,9 +40,7 @@ type HassWithLovelace = {
  * reads `views` off it), but both need the same "is the primary path even usable"
  * decision.
  */
-function getRawLovelaceConfig(
-  hass: HassWithLovelace | undefined | null,
-): RawLovelaceConfig {
+function getRawLovelaceConfig(hass: HassWithLovelace | undefined | null): RawLovelaceConfig {
   const config = hass?.lovelace?.config;
   if (!config) {
     throw new LovelaceUnavailableError();

@@ -498,7 +498,11 @@ describe("findDeclutteringSelectorConfig", () => {
   it("finds a matching card inside sections[].cards for a sections-view dashboard", () => {
     const config = {
       views: [
-        { sections: [{ cards: [{ type: "custom:decluttering-selector", title: "Sections Loader" }] }] },
+        {
+          sections: [
+            { cards: [{ type: "custom:decluttering-selector", title: "Sections Loader" }] },
+          ],
+        },
       ],
     };
     expect(findDeclutteringSelectorConfig(config)).toEqual({ title: "Sections Loader" });
@@ -556,7 +560,10 @@ describe("findDeclutteringSelectorConfig", () => {
         { cards: [{ type: "custom:decluttering-selector", title: "TopLevelFirst" }] },
         {
           cards: [
-            { type: "vertical-stack", cards: [{ type: "custom:decluttering-selector", title: "NestedSecond" }] },
+            {
+              type: "vertical-stack",
+              cards: [{ type: "custom:decluttering-selector", title: "NestedSecond" }],
+            },
           ],
         },
       ],

@@ -145,9 +145,7 @@ describe("registration from hass.lovelace.config", () => {
     // entries are registered; the single wrapper "Choose a Template" entry is
     // NOT registered in this mode.
     expect(window.customCards).toHaveLength(2);
-    expect(
-      window.customCards!.some((c) => c.type === "decluttering-template-picker"),
-    ).toBe(false);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
 
     document.body.removeChild(el);
   });
@@ -491,9 +489,7 @@ describe("dedicated_picker mode", () => {
     await flush(el);
 
     expect(window.customCards).toHaveLength(2);
-    expect(
-      window.customCards!.some((c) => c.type === "decluttering-template-picker"),
-    ).toBe(false);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
 
     el.setConfig!({ dedicated_picker: true });
     el.hass = makeHass(templates);
@@ -525,9 +521,7 @@ describe("dedicated_picker mode", () => {
     el.hass = makeHass(templates);
     await flush(el);
 
-    expect(
-      window.customCards!.some((c) => c.type === "decluttering-template-picker"),
-    ).toBe(false);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
     const expectedTypes = Object.keys(templates).map(typeForName);
     for (const type of expectedTypes) {
       expect(window.customCards!.some((c) => c.type === type)).toBe(true);

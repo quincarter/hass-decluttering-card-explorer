@@ -161,9 +161,7 @@ describe("initGlobalRegistration", () => {
     await flushPromises();
 
     expect(callWS).toHaveBeenCalled();
-    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(
-      false,
-    );
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
     expect(window.customCards!.some((c) => c.type.startsWith("decluttering-card-"))).toBe(true);
   });
 
