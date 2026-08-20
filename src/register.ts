@@ -44,7 +44,11 @@ export function makePreviewElement(tag: string, meta: TemplateMeta): typeof LitE
   };
 }
 
-export function registerTemplate(meta: TemplateMeta): void {
+export function registerTemplate(
+  meta: TemplateMeta,
+  options?: { registerCard?: boolean }
+): void {
+  const registerCard = options?.registerCard ?? true;
   const type = `decluttering-card-${meta.safeName}`;
   // HA's custom-card resolution (getLovelaceElementClass) does
   // `customElements.get(stripCustomPrefix(config.type))` directly — no `hui-card-`
@@ -60,6 +64,10 @@ export function registerTemplate(meta: TemplateMeta): void {
     return;
   }
 
+  // Bookkeeping (currentMetaByTag) and the custom-element definition are needed by
+  // getRegisteredMetas() and the picker's stub-config resolution respectively even
+  // when the per-template window.customCards entry is suppressed (dedicated-picker
+  // mode) — only the customCards entry itself is mode-dependent below.
   currentMetaByTag.set(tag, meta);
 
   if (!customElements.get(tag)) {
@@ -68,6 +76,15 @@ export function registerTemplate(meta: TemplateMeta): void {
 
   if (!Array.isArray(window.customCards)) {
     window.customCards = [];
+  }
+
+  const existingIndex = window.customCards.findIndex((c) => c.type === type);
+
+  if (!registerCard) {
+    if (existingIndex !== -1) {
+      window.customCards.splice(existingIndex, 1);
+    }
+    return;
   }
 
   const entry: CustomCardEntry = {
@@ -81,7 +98,6 @@ export function registerTemplate(meta: TemplateMeta): void {
     preview: true,
   };
 
-  const existingIndex = window.customCards.findIndex((c) => c.type === type);
   if (existingIndex === -1) {
     window.customCards.push(entry);
   } else {
@@ -89,17 +105,72 @@ export function registerTemplate(meta: TemplateMeta): void {
   }
 }
 
-export function registerAll(metas: TemplateMeta[]): string[] {
+export function getRegisteredMetas(): TemplateMeta[] {
+  return [...currentMetaByTag.values()];
+}
+
+/**
+ * Idempotently adds (`register: true`) or removes (`register: false`) the single
+ * "dedicated picker" wrapper entry in window.customCards. Symmetric and explicit —
+ * no default — so decluttering-selector.ts can toggle it cleanly whenever its
+ * `dedicated_picker` config flag changes, without ever leaking a stale entry behind.
+ *
+ * The name is deliberately prefixed with a literal "0 " (distinct from the
+ * "Decluttering: " clustering prefix used by per-template entries): the native
+ * picker's "Community cards" list is sorted alphabetically across every installed
+ * custom card, and a leading digit sorts before both upper- and lower-case ASCII
+ * letters, guaranteeing this entry lands first regardless of what else is installed.
+ */
+export function registerTemplatePickerCard(register: boolean): void {
+  if (!Array.isArray(window.customCards)) {
+    window.customCards = [];
+  }
+
+  const type = "decluttering-template-picker";
+  const existingIndex = window.customCards.findIndex((c) => c.type === type);
+
+  if (!register) {
+    if (existingIndex !== -1) {
+      window.customCards.splice(existingIndex, 1);
+    }
+    return;
+  }
+
+  if (existingIndex !== -1) {
+    return;
+  }
+
+  const entry: CustomCardEntry = {
+    type,
+    name: "0 Decluttering: Choose a Template",
+    description: "Opens a template chooser to pick from your decluttering templates.",
+    preview: true,
+  };
+
+  window.customCards.push(entry);
+}
+
+export function registerAll(
+  metas: TemplateMeta[],
+  options?: { registerCards?: boolean }
+): string[] {
+  const registerCards = options?.registerCards ?? true;
   const namesInBatch = new Set(metas.map((m) => m.name));
   for (const [tag, owner] of currentMetaByTag) {
     if (!namesInBatch.has(owner.name)) {
       currentMetaByTag.delete(tag);
+      if (Array.isArray(window.customCards)) {
+        const staleIndex = window.customCards.findIndex((c) => c.type === tag);
+        if (staleIndex !== -1) {
+          window.customCards.splice(staleIndex, 1);
+        }
+      }
     }
   }
 
   const types: string[] = [];
   for (const meta of metas) {
-    registerTemplate(meta);
+    registerTemplate(meta, { registerCard: registerCards });
     types.push(`decluttering-card-${meta.safeName}`);
   }
   return types;

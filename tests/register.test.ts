@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { makePreviewElement, registerTemplate, registerAll } from "../src/register";
+import {
+  makePreviewElement,
+  registerTemplate,
+  registerAll,
+  getRegisteredMetas,
+  registerTemplatePickerCard,
+} from "../src/register";
 import type { TemplateMeta } from "../src/types";
 
 interface CustomCardEntry {
@@ -281,5 +287,192 @@ describe("registerAll tag reconciliation across passes", () => {
     };
     const stub = await Cls.getStubConfig();
     expect(stub).toEqual(loserMeta.stubConfig);
+  });
+});
+
+describe("getRegisteredMetas", () => {
+  it("includes a meta registered via registerTemplate", () => {
+    const meta = makeMeta("get-metas-single");
+    registerTemplate(meta);
+    expect(getRegisteredMetas()).toContain(meta);
+  });
+
+  it("includes every meta registered via a registerAll pass", () => {
+    const metas = [makeMeta("get-metas-all-a"), makeMeta("get-metas-all-b")];
+    registerAll(metas);
+    const registered = getRegisteredMetas();
+    for (const meta of metas) {
+      expect(registered).toContain(meta);
+    }
+  });
+
+  it("reflects tag reconciliation: a meta released by a later registerAll pass is no longer present", () => {
+    const ownerMeta = makeMeta("get-metas-reconcile", { name: "Reconcile Owner" });
+    const loserMeta = makeMeta("get-metas-reconcile", { name: "Reconcile Loser" });
+    registerAll([ownerMeta, loserMeta]);
+    expect(getRegisteredMetas()).toContain(ownerMeta);
+
+    registerAll([loserMeta]);
+    expect(getRegisteredMetas()).not.toContain(ownerMeta);
+    expect(getRegisteredMetas()).toContain(loserMeta);
+  });
+});
+
+describe("registerTemplatePickerCard", () => {
+  // Contract: registerTemplatePickerCard(register: boolean) is now symmetric —
+  // `true` idempotently adds the single wrapper entry, `false` idempotently
+  // removes it. There is no default; callers must be explicit about which mode
+  // is currently active so decluttering-selector.ts can toggle it on
+  // `dedicated_picker` config changes without leaking a stale entry.
+  it("pushes a single entry with the expected type and preview flag when passed true", () => {
+    registerTemplatePickerCard(true);
+    const matches = window.customCards!.filter((c) => c.type === "decluttering-template-picker");
+    expect(matches).toHaveLength(1);
+    expect(matches[0].preview).toBe(true);
+  });
+
+  it('registers a name starting with the sort-first "0" prefix so it lists ahead of other community cards alphabetically', () => {
+    registerTemplatePickerCard(true);
+    const entry = window.customCards!.find((c) => c.type === "decluttering-template-picker");
+    expect(entry).toBeDefined();
+    // Digit code points sort before both upper- and lower-case ASCII letters in
+    // default string comparison, so a leading "0" guarantees this entry is
+    // first in HA's alphabetically-sorted "Community cards" list regardless of
+    // what other custom cards (mushroom, button-card, etc.) are installed.
+    expect(entry!.name.startsWith("0")).toBe(true);
+    expect(entry!.name < "Button Card").toBe(true);
+    expect(entry!.name < "Core cards").toBe(true);
+    expect(entry!.name < "a").toBe(true);
+  });
+
+  it("does not duplicate the entry when called with true more than once", () => {
+    registerTemplatePickerCard(true);
+    expect(() => registerTemplatePickerCard(true)).not.toThrow();
+    registerTemplatePickerCard(true);
+    const matches = window.customCards!.filter((c) => c.type === "decluttering-template-picker");
+    expect(matches).toHaveLength(1);
+  });
+
+  it("creates window.customCards when it does not already exist and passed true", () => {
+    delete (window as { customCards?: CustomCardEntry[] }).customCards;
+    registerTemplatePickerCard(true);
+    expect(Array.isArray(window.customCards)).toBe(true);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(true);
+  });
+
+  it("removes the entry when passed false after it was previously added", () => {
+    registerTemplatePickerCard(true);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(true);
+    registerTemplatePickerCard(false);
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
+  });
+
+  it("is a no-op and does not throw when passed false and the entry is not present", () => {
+    expect(() => registerTemplatePickerCard(false)).not.toThrow();
+    expect(window.customCards!.some((c) => c.type === "decluttering-template-picker")).toBe(false);
+  });
+
+  it("creates window.customCards when it does not already exist and passed false", () => {
+    delete (window as { customCards?: CustomCardEntry[] }).customCards;
+    expect(() => registerTemplatePickerCard(false)).not.toThrow();
+    expect(Array.isArray(window.customCards)).toBe(true);
+  });
+});
+
+describe("registerTemplate with registerCard: false", () => {
+  it("still records the meta in getRegisteredMetas() when the per-template customCards entry is suppressed", () => {
+    const meta = makeMeta("suppress-metas");
+    registerTemplate(meta, { registerCard: false });
+    expect(getRegisteredMetas()).toContain(meta);
+  });
+
+  it("does not push a window.customCards entry when registerCard is false", () => {
+    const meta = makeMeta("suppress-no-entry");
+    registerTemplate(meta, { registerCard: false });
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(false);
+  });
+
+  it("still defines the custom element tag when registerCard is false", () => {
+    const meta = makeMeta("suppress-still-defines");
+    registerTemplate(meta, { registerCard: false });
+    expect(customElements.get(tagFor(meta))).toBeDefined();
+  });
+
+  it("adds the entry once a later call passes registerCard: true for a previously-suppressed template", () => {
+    const meta = makeMeta("suppress-then-register");
+    registerTemplate(meta, { registerCard: false });
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(false);
+    registerTemplate(meta, { registerCard: true });
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(true);
+  });
+
+  it("removes an existing entry when a later call passes registerCard: false for a previously-registered template", () => {
+    const meta = makeMeta("register-then-suppress");
+    registerTemplate(meta);
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(true);
+    registerTemplate(meta, { registerCard: false });
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(false);
+    expect(getRegisteredMetas()).toContain(meta);
+  });
+});
+
+describe("registerAll with registerCards: false", () => {
+  it("populates getRegisteredMetas() for every meta even though no per-template entries are pushed", () => {
+    const metas = [makeMeta("suppress-all-a"), makeMeta("suppress-all-b")];
+    registerAll(metas, { registerCards: false });
+    const registered = getRegisteredMetas();
+    for (const meta of metas) {
+      expect(registered).toContain(meta);
+      expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(false);
+    }
+  });
+
+  it("removes previously-registered per-template entries when the same metas are re-registered with registerCards: false", () => {
+    const metas = [makeMeta("mode-switch-a"), makeMeta("mode-switch-b")];
+    registerAll(metas);
+    for (const meta of metas) {
+      expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(true);
+    }
+
+    registerAll(metas, { registerCards: false });
+    for (const meta of metas) {
+      expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(false);
+      expect(getRegisteredMetas()).toContain(meta);
+    }
+  });
+
+  it("adds entries back when metas are re-registered with registerCards: true after being suppressed", () => {
+    const metas = [makeMeta("mode-switch-back-a")];
+    registerAll(metas, { registerCards: false });
+    expect(window.customCards!.some((c) => c.type === typeFor(metas[0]))).toBe(false);
+
+    registerAll(metas);
+    expect(window.customCards!.some((c) => c.type === typeFor(metas[0]))).toBe(true);
+  });
+});
+
+describe("registerAll stale entry cleanup", () => {
+  it("removes a template's window.customCards entry (not just its internal bookkeeping) when it is absent from a later registerAll pass", () => {
+    const meta = makeMeta("stale-cleanup");
+    registerAll([meta]);
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(true);
+
+    registerAll([]);
+
+    expect(window.customCards!.some((c) => c.type === typeFor(meta))).toBe(false);
+    expect(getRegisteredMetas()).not.toContain(meta);
+  });
+
+  it("removes a renamed template's old entry (a different safeName, not a tag collision) while keeping the new one", () => {
+    const oldMeta = makeMeta("stale-rename-old", { name: "Old Name" });
+    registerAll([oldMeta]);
+    expect(window.customCards!.some((c) => c.type === typeFor(oldMeta))).toBe(true);
+
+    const newMeta = makeMeta("stale-rename-new", { name: "New Name" });
+    registerAll([newMeta]);
+
+    expect(window.customCards!.some((c) => c.type === typeFor(oldMeta))).toBe(false);
+    expect(window.customCards!.some((c) => c.type === typeFor(newMeta))).toBe(true);
+    expect(getRegisteredMetas()).not.toContain(oldMeta);
   });
 });

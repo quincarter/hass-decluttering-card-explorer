@@ -1,10 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   safeTagName,
   extractTemplates,
   buildStubConfig,
   analyzeTemplates,
   getDeclutteringTemplates,
+  resolveDashboardConfig,
+  findDeclutteringSelectorConfig,
 } from "../src/decluttering";
 import type { DeclutteringTemplate, DeclutteringTemplates, TemplateMeta } from "../src/types";
 
@@ -346,5 +348,265 @@ describe("getDeclutteringTemplates", () => {
 
     expect(firstErrorName).toBe("LovelaceUnavailableError");
     expect(secondErrorName).toBe("LovelaceUnavailableError");
+  });
+});
+
+describe("resolveDashboardConfig", () => {
+  it("returns hass.lovelace.config directly, including fields beyond decluttering_templates like views, when the primary path is available", async () => {
+    const config = {
+      decluttering_templates: { foo: { card: { type: "x" } } },
+      views: [{ cards: [] }],
+    };
+    const hass = { lovelace: { config } };
+    const result = await resolveDashboardConfig(hass, "lovelace");
+    expect(result).toEqual(config);
+  });
+
+  it("returns the raw config object rather than a pre-extracted templates map on the primary path", async () => {
+    const config = { decluttering_templates: { foo: { card: {} } }, views: [] };
+    const hass = { lovelace: { config } };
+    const result = await resolveDashboardConfig(hass, "lovelace");
+    expect(result).toHaveProperty("views");
+    expect(result).toHaveProperty("decluttering_templates");
+  });
+
+  it("falls back to hass.callWS with the given url_path when hass.lovelace is unavailable", async () => {
+    const config = { decluttering_templates: { foo: { card: { type: "x" } } } };
+    const callWS = vi.fn().mockResolvedValue(config);
+    const hass = { callWS };
+    const result = await resolveDashboardConfig(hass, "my-dashboard");
+    expect(callWS).toHaveBeenCalledWith({ type: "lovelace/config", url_path: "my-dashboard" });
+    expect(result).toEqual(config);
+  });
+
+  it('retries once with no url_path when urlPath is "lovelace" and the error code is config_not_found (pre-migration instances)', async () => {
+    const legacyConfig = { decluttering_templates: { legacy: { card: { type: "x" } } } };
+    const callWS = vi
+      .fn()
+      .mockRejectedValueOnce({ code: "config_not_found" })
+      .mockResolvedValueOnce(legacyConfig);
+    const hass = { callWS };
+    const result = await resolveDashboardConfig(hass, "lovelace");
+    expect(callWS).toHaveBeenNthCalledWith(1, { type: "lovelace/config", url_path: "lovelace" });
+    expect(callWS).toHaveBeenNthCalledWith(2, { type: "lovelace/config" });
+    expect(result).toEqual(legacyConfig);
+  });
+
+  it('warns on the console before retrying the pre-migration fallback, identifying the "lovelace" url_path case', async () => {
+    const legacyConfig = { decluttering_templates: { legacy: { card: { type: "x" } } } };
+    const callWS = vi
+      .fn()
+      .mockRejectedValueOnce({ code: "config_not_found" })
+      .mockResolvedValueOnce(legacyConfig);
+    const hass = { callWS };
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await resolveDashboardConfig(hass, "lovelace");
+    expect(consoleWarn).toHaveBeenCalledTimes(1);
+    expect(consoleWarn.mock.calls[0][0]).toContain(
+      'no dashboard registered at url_path "lovelace"',
+    );
+    consoleWarn.mockRestore();
+  });
+
+  it("does not retry and propagates the error when a non-lovelace url_path is not found", async () => {
+    const callWS = vi.fn().mockRejectedValue({ code: "config_not_found" });
+    const hass = { callWS };
+    await expect(resolveDashboardConfig(hass, "some-other-dashboard")).rejects.toBeDefined();
+    expect(callWS).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates errors from callWS that are not the pre-migration config_not_found case", async () => {
+    const callWS = vi.fn().mockRejectedValue(new Error("boom"));
+    const hass = { callWS };
+    await expect(resolveDashboardConfig(hass, "lovelace")).rejects.toThrow("boom");
+  });
+
+  it("returns an empty object when hass.lovelace is unavailable and hass.callWS is not a function", async () => {
+    const hass = {};
+    const result = await resolveDashboardConfig(hass, "lovelace");
+    expect(result).toEqual({});
+  });
+
+  it("returns an empty object when hass itself is undefined and no callWS is available", async () => {
+    const result = await resolveDashboardConfig(undefined, undefined);
+    expect(result).toEqual({});
+  });
+});
+
+describe("findDeclutteringSelectorConfig", () => {
+  it("finds a matching card at the top level of a view's cards array and returns its config minus type", () => {
+    const config = {
+      views: [
+        {
+          cards: [
+            { type: "some-other-card" },
+            { type: "custom:decluttering-selector", title: "My Templates", show_info: true },
+          ],
+        },
+      ],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({
+      title: "My Templates",
+      show_info: true,
+    });
+  });
+
+  it("finds a matching card nested inside a stack-type card's own cards array", () => {
+    const config = {
+      views: [
+        {
+          cards: [
+            {
+              type: "vertical-stack",
+              cards: [{ type: "custom:decluttering-selector", dedicated_picker: true }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({ dedicated_picker: true });
+  });
+
+  it("finds a matching card nested two levels deep inside stacked stack-type cards", () => {
+    const config = {
+      views: [
+        {
+          cards: [
+            {
+              type: "horizontal-stack",
+              cards: [
+                {
+                  type: "vertical-stack",
+                  cards: [{ type: "custom:decluttering-selector", title: "Deep" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({ title: "Deep" });
+  });
+
+  it("finds a matching card inside a view's badges array", () => {
+    const config = {
+      views: [{ badges: [{ type: "custom:decluttering-selector", title: "Badge Loader" }] }],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({ title: "Badge Loader" });
+  });
+
+  it("finds a matching card inside sections[].cards for a sections-view dashboard", () => {
+    const config = {
+      views: [
+        { sections: [{ cards: [{ type: "custom:decluttering-selector", title: "Sections Loader" }] }] },
+      ],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({ title: "Sections Loader" });
+  });
+
+  it("returns undefined when no card of that type exists anywhere in the config", () => {
+    const config = { views: [{ cards: [{ type: "some-other-card" }] }] };
+    expect(findDeclutteringSelectorConfig(config)).toBeUndefined();
+  });
+
+  it("returns undefined without throwing when views is missing", () => {
+    expect(findDeclutteringSelectorConfig({})).toBeUndefined();
+  });
+
+  it("returns undefined without throwing when views is an empty array", () => {
+    expect(findDeclutteringSelectorConfig({ views: [] })).toBeUndefined();
+  });
+
+  it("returns undefined without throwing for a malformed config where views is not an array", () => {
+    expect(findDeclutteringSelectorConfig({ views: "not-an-array" } as never)).toBeUndefined();
+  });
+
+  it("returns undefined without throwing when a view's cards field is not an array", () => {
+    expect(findDeclutteringSelectorConfig({ views: [{ cards: "nope" }] } as never)).toBeUndefined();
+  });
+
+  it("returns undefined without throwing when a stack card's nested cards field is malformed", () => {
+    const config = {
+      views: [{ cards: [{ type: "vertical-stack", cards: { not: "an-array" } }] }],
+    };
+    expect(findDeclutteringSelectorConfig(config as never)).toBeUndefined();
+  });
+
+  it("returns undefined without throwing when config itself is undefined", () => {
+    expect(findDeclutteringSelectorConfig(undefined as never)).toBeUndefined();
+  });
+
+  it("returns undefined without throwing when config itself is null", () => {
+    expect(findDeclutteringSelectorConfig(null as never)).toBeUndefined();
+  });
+
+  it("returns the first match in document order when multiple decluttering-selector cards exist across views", () => {
+    const config = {
+      views: [
+        { cards: [{ type: "custom:decluttering-selector", title: "First" }] },
+        { cards: [{ type: "custom:decluttering-selector", title: "Second" }] },
+      ],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({ title: "First" });
+  });
+
+  it("returns the first match in document order when a later match is nested and an earlier match is top-level", () => {
+    const config = {
+      views: [
+        { cards: [{ type: "custom:decluttering-selector", title: "TopLevelFirst" }] },
+        {
+          cards: [
+            { type: "vertical-stack", cards: [{ type: "custom:decluttering-selector", title: "NestedSecond" }] },
+          ],
+        },
+      ],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({ title: "TopLevelFirst" });
+  });
+
+  it("excludes the type field from the returned config", () => {
+    const config = {
+      views: [{ cards: [{ type: "custom:decluttering-selector", title: "T" }] }],
+    };
+    const result = findDeclutteringSelectorConfig(config);
+    expect(result).not.toHaveProperty("type");
+  });
+
+  it("returns an object with no other fields when the matching card has no config beyond type", () => {
+    const config = {
+      views: [{ cards: [{ type: "custom:decluttering-selector" }] }],
+    };
+    expect(findDeclutteringSelectorConfig(config)).toEqual({});
+  });
+
+  it("does not throw on a circular config (a stack card whose cards array contains itself)", () => {
+    const selfReferencing: Record<string, unknown> = { type: "vertical-stack" };
+    selfReferencing.cards = [selfReferencing];
+    const config = { views: [{ cards: [selfReferencing] }] };
+    expect(() => findDeclutteringSelectorConfig(config as never)).not.toThrow();
+    expect(findDeclutteringSelectorConfig(config as never)).toBeUndefined();
+  });
+
+  it("does not throw on a circular config where an ancestor card is re-referenced by a descendant", () => {
+    const outer: Record<string, unknown> = { type: "vertical-stack" };
+    const inner: Record<string, unknown> = { type: "horizontal-stack", cards: [outer] };
+    outer.cards = [inner];
+    const config = { views: [{ cards: [outer] }] };
+    expect(() => findDeclutteringSelectorConfig(config as never)).not.toThrow();
+    expect(findDeclutteringSelectorConfig(config as never)).toBeUndefined();
+  });
+
+  it("still finds a match that appears before a circular sibling card, without throwing", () => {
+    const loopCard: Record<string, unknown> = { type: "vertical-stack" };
+    loopCard.cards = [loopCard];
+    const config = {
+      views: [
+        {
+          cards: [{ type: "custom:decluttering-selector", title: "Found" }, loopCard],
+        },
+      ],
+    };
+    expect(() => findDeclutteringSelectorConfig(config as never)).not.toThrow();
+    expect(findDeclutteringSelectorConfig(config as never)).toEqual({ title: "Found" });
   });
 });
