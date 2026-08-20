@@ -1,5 +1,25 @@
 # decluttering-selector
 
+## 0.4.0
+
+### Minor Changes
+
+- dea7f54: Added a `dedicated_picker` option and a new "Decluttering: Choose a Template" card to the Add Card picker.
+
+  - **Default behavior is unchanged** — Add Card still shows one "Decluttering: `<template name>`" entry per template.
+  - **New opt-in mode** — set `dedicated_picker: true` on the Decluttering Selector card to replace all of those per-template entries with a single "Decluttering: Choose a Template" entry instead, sorted to the top of the picker's community-cards list regardless of what else is installed.
+  - **Searchable, live-previewed editor** — that single entry's own editor shows a filterable grid of every template on the dashboard, each with a real live preview of the card it would insert, so you can find one without scrolling a row per template.
+
+- beb3397: Card names in the "Add Card" picker are now prefixed with "Decluttering: " (e.g. "Decluttering: My Template"). Since Home Assistant's picker doesn't support custom categories for community cards and sorts that list alphabetically, this groups all of your decluttering templates together so they're easy to spot without typing "decluttering" into the search box.
+
+### Patch Changes
+
+- dea7f54: Fixed templates not showing up in Add Card when the Decluttering Selector card lives on a dashboard view/tab other than the one you currently have open.
+
+  - **Root cause** — Home Assistant only builds the cards for whichever view tab is active, so a Decluttering Selector sitting on a different tab was never actually running until you clicked over to it at least once.
+  - **Fix** — registration now also runs once, automatically, from the dashboard's full saved configuration as soon as the page loads, which already includes every view and not just the active one, so templates show up in Add Card no matter which tab you're on.
+  - Existing per-card registration is unchanged and keeps working the same way alongside this.
+
 ## 0.3.5
 
 ### Patch Changes
