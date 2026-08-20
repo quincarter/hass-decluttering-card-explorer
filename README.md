@@ -163,6 +163,7 @@ The card only reads templates from the dashboard it's placed on (see
   type: custom:decluttering-selector
   show_info: true
   title: My Templates
+  dedicated_picker: false
   ```
 
   `dedicated_picker` controls which of two mutually exclusive flows registers
@@ -242,6 +243,13 @@ templates any time by reopening the card's editor and choosing a different one.
 Changing `dedicated_picker` on an already-placed Decluttering Selector card swaps
 which entries appear the next time you open Add Card — it doesn't require re-adding
 the card.
+
+##### Dedicated Picker
+
+![dedicated picker screenshot](screenshots/favorite-decluttering-chooser.png)
+![dedicated picker chooser screenshot](screenshots/chooser-selector.png)
+
+---
 
 ### Staying in sync
 
